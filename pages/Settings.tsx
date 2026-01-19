@@ -173,7 +173,7 @@ const Settings: React.FC = () => {
             AI 模型配置
          </h3>
          <div className="max-w-xl">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Gemini API Key</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
             <div className="flex gap-2">
               <input 
                 type="password" 

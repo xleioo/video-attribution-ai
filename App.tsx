@@ -1,6 +1,5 @@
 import React, { useState, createContext, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import Report from './pages/Report';
 import Settings from './pages/Settings';
@@ -17,7 +16,7 @@ export const AppContext = createContext<AppContextType>({
 });
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('projects');  // 默认显示项目管理页面
   const [tagTaxonomy, setTagTaxonomy] = useState<TagCategory[]>(INITIAL_TAG_TAXONOMY);
   const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('gemini_api_key'));
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +76,6 @@ const App: React.FC = () => {
       );
     }
     switch (currentPage) {
-      case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
       case 'projects': return <ProjectList />;
       case 'report': return <Report />;
       case 'settings': return <Settings />;

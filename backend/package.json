@@ -1,0 +1,25 @@
+{
+  "name": "elixir-short-video-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Elixir Short Video Attribution AI",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "init-db": "node src/scripts/initDatabase.js"
+  },
+  "keywords": ["api", "express", "mysql"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

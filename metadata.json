@@ -1,0 +1,5 @@
+{
+  "name": "Elixir Short Video Attribution AI",
+  "description": "AI-driven short video content attribution analysis platform. Uses AI to tag video elements and binomial regression to calculate feature weights on business metrics.",
+  "requestFramePermissions": []
+}

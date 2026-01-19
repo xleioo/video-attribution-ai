@@ -95,5 +95,27 @@ export const TagModel = {
       [id]
     );
     return result.affectedRows;
+  },
+
+  // 获取所有标签分类及其标签（用于AI分析）
+  async getAllTagCategoriesWithTags() {
+    const [categories] = await pool.query(
+      'SELECT id, name FROM tag_categories ORDER BY sort_order, id'
+    );
+    
+    const result = [];
+    for (let category of categories) {
+      const [tags] = await pool.query(
+        'SELECT name FROM tags WHERE category_id = ? ORDER BY sort_order, id',
+        [category.id]
+      );
+      result.push({
+        id: category.id,
+        name: category.name,
+        tags: tags.map(t => t.name)
+      });
+    }
+    
+    return result;
   }
 };

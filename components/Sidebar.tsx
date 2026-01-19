@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, BarChart3, Settings, Video, FileInput } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings, Video, FileInput, FolderKanban } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -9,6 +9,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
   const navItems = [
     { id: 'dashboard', label: '工作台 (Dashboard)', icon: LayoutDashboard },
+    { id: 'projects', label: '项目管理 (Projects)', icon: FolderKanban },
     { id: 'report', label: '归因分析报告 (Report)', icon: BarChart3 },
     { id: 'playground', label: '视频素材库 (Library)', icon: Video },
     { id: 'settings', label: '系统设置 (Settings)', icon: Settings },

@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import projectRoutes from './routes/projectRoutes.js';
 import tagRoutes from './routes/tagRoutes.js';
 import apiConfigRoutes from './routes/apiConfigRoutes.js';
+import videoRoutes from './routes/videoRoutes.js';
 
 // 加载环境变量
 dotenv.config();
@@ -20,6 +21,9 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// 静态文件服务（提供下载的视频）
+app.use('/storage', express.static(process.env.STORAGE_PATH || './storage'));
 
 // 日志中间件
 app.use((req, res, next) => {
@@ -40,6 +44,7 @@ app.get('/health', (req, res) => {
 app.use('/api/projects', projectRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/config', apiConfigRoutes);
+app.use('/api', videoRoutes);
 
 // 404 处理
 app.use((req, res) => {

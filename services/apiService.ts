@@ -1,5 +1,5 @@
 // API基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -25,6 +25,13 @@ async function request<T>(
     const data = await response.json();
     
     if (!response.ok) {
+      // 404 错误不需要在控制台显示为错误（有些情况下是正常的）
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: data.message || '资源不存在',
+        };
+      }
       throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
     
@@ -163,6 +170,64 @@ export const apiConfigApi = {
     return request(`/api/config/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  // 测试API Key
+  async testApiKey(apiKey: string) {
+    return request('/api/config/test', {
+      method: 'POST',
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+  },
+};
+
+// 视频相关API
+export const videoApi = {
+  // 获取项目的视频列表
+  async getProjectVideos(projectId: number) {
+    return request(`/api/projects/${projectId}/videos`);
+  },
+
+  // 获取单个视频详情
+  async getVideoById(videoId: string) {
+    return request(`/api/videos/${videoId}`);
+  },
+
+  // 更新视频状态
+  async updateVideoStatus(videoId: string, status: string, additionalData?: any) {
+    return request(`/api/videos/${videoId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, ...additionalData }),
+    });
+  },
+
+  // 删除视频
+  async deleteVideo(videoId: string) {
+    return request(`/api/videos/${videoId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // 获取项目状态
+  async getProjectStatus(projectId: number) {
+    return request(`/api/projects/${projectId}/status`);
+  },
+
+  // 开始视频打标（API Key 从数据库读取）
+  async startVideoTagging(videoId: string) {
+    return request(`/api/videos/${videoId}/tag`, {
+      method: 'POST',
+    });
+  },
+
+  // 获取视频标签
+  async getVideoTags(videoId: string) {
+    return request(`/api/videos/${videoId}/tags`);
+  },
+
+  // 获取打标队列状态
+  async getTaggingQueueStatus() {
+    return request('/api/tagging-queue/status');
   },
 };
 

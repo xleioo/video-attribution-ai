@@ -10,5 +10,6 @@ router.get('/:name', apiConfigController.getApiConfigByName);
 router.post('/', apiConfigController.createApiConfig);
 router.put('/:id', apiConfigController.updateApiConfig);
 router.delete('/:id', apiConfigController.deleteApiConfig);
+router.post('/test', apiConfigController.testApiKey);
 
 export default router;

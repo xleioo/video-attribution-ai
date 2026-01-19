@@ -147,5 +147,58 @@ export const apiConfigController = {
         error: error.message
       });
     }
+  },
+
+  // 测试API Key
+  async testApiKey(req, res) {
+    try {
+      const { api_key } = req.body;
+
+      if (!api_key) {
+        return res.status(400).json({
+          success: false,
+          message: '请提供 API Key'
+        });
+      }
+
+      // 动态导入 @google/genai
+      const { GoogleGenAI } = await import('@google/genai');
+      
+      const ai = new GoogleGenAI({ apiKey: api_key });
+
+      // 发送一个简单的测试请求
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            {
+              text: "Say 'Hello' in one word.",
+            },
+          ],
+        },
+      });
+
+      const text = response.text;
+
+      if (text) {
+        res.json({
+          success: true,
+          message: 'API Key 有效',
+          test_response: text
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'API Key 无效或无响应'
+        });
+      }
+    } catch (error) {
+      console.error('测试API Key失败:', error);
+      res.status(400).json({
+        success: false,
+        message: 'API Key 测试失败',
+        error: error.message
+      });
+    }
   }
 };

@@ -1,7 +1,8 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
-import { Tag, Trash2, Plus, Save, X, Edit2, Check } from 'lucide-react';
+import { Tag, Trash2, Plus, Save, X, Edit2, Check, TestTube, Loader } from 'lucide-react';
 import { TagCategory } from '../types';
+import { apiConfigApi } from '../services/apiService';
 
 const Settings: React.FC = () => {
   const { tagTaxonomy, updateTagTaxonomy, apiKey, setApiKey } = useContext(AppContext);
@@ -14,10 +15,69 @@ const Settings: React.FC = () => {
   // State for editing category names
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editCatName, setEditCatName] = useState('');
+  
+  // State for API Key testing
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     updateTagTaxonomy(localTaxonomy);
-    alert("Taxonomy configuration saved successfully!");
+    
+    // 保存API Key到数据库
+    if (apiKey) {
+      try {
+        // 检查是否已有活跃配置
+        const activeConfig = await apiConfigApi.getActiveApiConfig();
+        
+        if (activeConfig.success && activeConfig.data) {
+          // 更新现有配置
+          await apiConfigApi.updateApiConfig((activeConfig.data as any).id, {
+            config_name: 'Gemini API',
+            api_key: apiKey,
+            provider: 'gemini',
+            is_active: true
+          });
+        } else {
+          // 创建新配置
+          await apiConfigApi.createApiConfig({
+            config_name: 'Gemini API',
+            api_key: apiKey,
+            provider: 'gemini',
+            is_active: true
+          });
+        }
+        alert("配置保存成功！");
+      } catch (error) {
+        console.error('保存API配置失败:', error);
+        alert("标签配置已保存，但API Key保存失败");
+      }
+    } else {
+      alert("标签配置已保存！");
+    }
+  };
+
+  // 测试API Key
+  const handleTestApiKey = async () => {
+    if (!apiKey || !apiKey.trim()) {
+      setTestResult({ success: false, message: '请先输入API Key' });
+      return;
+    }
+
+    setIsTestingKey(true);
+    setTestResult(null);
+
+    try {
+      const response = await apiConfigApi.testApiKey(apiKey);
+      if (response.success) {
+        setTestResult({ success: true, message: '✓ API Key 有效！' });
+      } else {
+        setTestResult({ success: false, message: '✗ API Key 无效：' + response.error });
+      }
+    } catch (error) {
+      setTestResult({ success: false, message: '✗ 测试失败：网络错误' });
+    } finally {
+      setIsTestingKey(false);
+    }
   };
 
   // --- Category Management ---
@@ -114,15 +174,49 @@ const Settings: React.FC = () => {
          </h3>
          <div className="max-w-xl">
             <label className="block text-sm font-medium text-slate-700 mb-1">Gemini API Key</label>
-            <input 
-              type="password" 
-              value={apiKey || ''}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your AI Model API Key"
-              className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-            />
+            <div className="flex gap-2">
+              <input 
+                type="password" 
+                value={apiKey || ''}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setTestResult(null); // 清除之前的测试结果
+                }}
+                placeholder="AIza..."
+                className="flex-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              />
+              <button
+                onClick={handleTestApiKey}
+                disabled={isTestingKey || !apiKey}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isTestingKey ? (
+                  <>
+                    <Loader size={16} className="animate-spin" />
+                    测试中...
+                  </>
+                ) : (
+                  <>
+                    <TestTube size={16} />
+                    测试
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {/* 测试结果 */}
+            {testResult && (
+              <div className={`mt-2 p-2 rounded text-sm ${
+                testResult.success 
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+              }`}>
+                {testResult.message}
+              </div>
+            )}
+            
             <p className="text-xs text-slate-500 mt-2">
-              用于 "视频素材库" 功能中的自动化视频理解与打标。
+              用于视频打标功能中的自动化视频内容理解与标签识别。保存后所有视频打标将自动使用此 Key。
             </p>
          </div>
       </section>

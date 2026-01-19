@@ -1,6 +1,7 @@
 import React, { useState, createContext, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import ProjectList from './pages/ProjectList';
 import Report from './pages/Report';
 import Settings from './pages/Settings';
 import VideoPlayground from './pages/VideoPlayground';
@@ -40,14 +41,19 @@ const App: React.FC = () => {
           console.warn('从后端加载标签失败，使用默认数据');
         }
 
-        // 加载活跃的API配置
-        const apiConfigResponse = await apiConfigApi.getActiveApiConfig();
-        if (apiConfigResponse.success && apiConfigResponse.data) {
-          const config = apiConfigResponse.data as any;
-          if (config.api_key && !apiKey) {
-            // 只有在本地没有API key时才使用后端的
-            setApiKey(config.api_key);
+        // 加载活跃的API配置（可选）
+        try {
+          const apiConfigResponse = await apiConfigApi.getActiveApiConfig();
+          if (apiConfigResponse.success && apiConfigResponse.data) {
+            const config = apiConfigResponse.data as any;
+            if (config.api_key && !apiKey) {
+              // 只有在本地没有API key时才使用后端的
+              setApiKey(config.api_key);
+            }
           }
+        } catch (apiConfigError) {
+          // 没有活跃的API配置是正常的，不需要报错
+          console.log('没有找到活跃的API配置，将使用手动输入的API Key');
         }
       } catch (error) {
         console.error('加载数据失败:', error);
@@ -72,10 +78,11 @@ const App: React.FC = () => {
     }
     switch (currentPage) {
       case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
+      case 'projects': return <ProjectList />;
       case 'report': return <Report />;
       case 'settings': return <Settings />;
       case 'playground': return <VideoPlayground />;
-      default: return <Dashboard onNavigate={setCurrentPage} />;
+      default: return <ProjectList />;
     }
   };
 

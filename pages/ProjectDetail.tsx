@@ -11,6 +11,7 @@ import {
   BarChart3,
   Brain,
   Table,
+  Download,
 } from 'lucide-react';
 import { videoApi, projectApi } from '../services/apiService';
 import type { Video, VideoStats, ProjectStatus, Project } from '../types';
@@ -274,6 +275,26 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
   // 分析是否已完成
   const analysisCompleted = projectStatus?.current_step === 'completed';
   const analysisReady = projectStatus?.current_step === 'ai_tagging' || projectStatus?.current_step === 'modeling' || analysisCompleted;
+
+  // 检查是否所有视频都已完成打标
+  const allVideosTagged = videos.length > 0 && videos.every(v => 
+    v.status === 'ready' && v.ai_tagging_status === 'completed'
+  );
+
+  // 下载项目数据
+  const handleDownloadData = async () => {
+    if (!allVideosTagged) {
+      alert('请等待所有视频完成打标后再下载数据');
+      return;
+    }
+
+    try {
+      await projectApi.downloadProjectData(projectId);
+    } catch (error) {
+      console.error('下载失败:', error);
+      alert('下载失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
 
   // 视频资产列表组件
   const renderVideoAssetsList = () => (
@@ -569,6 +590,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                 <span className="text-rose-600">失败: {stats.failed}</span>
               )}
             </div>
+          </div>
+        )}
+        
+        {/* 数据下载按钮 - 只在所有视频完成打标后显示 */}
+        {allVideosTagged && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={handleDownloadData}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-md hover:shadow-lg"
+            >
+              <Download size={20} />
+              <span>下载项目数据 (CSV)</span>
+            </button>
           </div>
         )}
       </div>

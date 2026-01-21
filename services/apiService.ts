@@ -47,6 +47,38 @@ async function request<T>(
 
 // 项目相关API
 export const projectApi = {
+  // 下载项目数据（CSV）
+  async downloadProjectData(projectId: number): Promise<void> {
+    const url = `${API_BASE_URL}/api/projects/${projectId}/download`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '下载失败');
+    }
+    
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let fileName = `project-${projectId}-data.csv`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+      if (fileNameMatch) {
+        fileName = decodeURIComponent(fileNameMatch[1]);
+      }
+    }
+    
+    // 下载文件
+    const blob = await response.blob();
+    const url_blob = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url_blob;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url_blob);
+  },
+
   // 获取所有项目
   async getAllProjects() {
     return request('/api/projects');

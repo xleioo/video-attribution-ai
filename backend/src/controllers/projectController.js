@@ -225,5 +225,118 @@ export const projectController = {
         error: error.message
       });
     }
+  },
+
+  // 下载项目数据（CSV格式）
+  async downloadProjectData(req, res) {
+    try {
+      const { id } = req.params;
+      const project = await ProjectModel.getProjectById(id);
+      
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          message: '项目不存在'
+        });
+      }
+
+      // 获取项目所有视频
+      const videos = await VideoModel.getVideosByProject(id);
+      
+      // 检查是否所有视频都已完成打标
+      const allTagged = videos.every(v => 
+        v.status === 'ready' && v.ai_tagging_status === 'completed'
+      );
+
+      if (!allTagged) {
+        return res.status(400).json({
+          success: false,
+          message: '项目中的视频尚未全部完成打标，无法下载数据'
+        });
+      }
+
+      // 获取所有标签分类和标签
+      const { TagModel } = await import('../models/tagModel.js');
+      const tagCategories = await TagModel.getAllTagCategoriesWithTags();
+      
+      // 构建所有标签列表（格式：标签类别名：标签名）
+      const allTags = [];
+      tagCategories.forEach(cat => {
+        cat.tags.forEach(tagName => {
+          allTags.push({
+            categoryName: cat.name,
+            tagName: tagName,
+            columnName: `${cat.name}：${tagName}`
+          });
+        });
+      });
+
+      // 获取项目的指标字段
+      const metricsColumns = project.column_mapping?.metrics || {};
+      const metricNames = Object.keys(metricsColumns);
+
+      // 构建CSV表头
+      const headers = [
+        '视频标题',
+        '视频URL',
+        ...metricNames,
+        ...allTags.map(t => t.columnName)
+      ];
+
+      // 构建CSV数据行
+      const rows = [];
+      for (const video of videos) {
+        // 获取视频的指标数据
+        const videoMetrics = await VideoModel.getVideoMetrics(video.id);
+        const metricsMap = {};
+        videoMetrics.forEach(m => {
+          metricsMap[m.metric_name] = m.metric_value;
+        });
+
+        // 获取视频的标签数据
+        const videoTags = await VideoModel.getVideoTags(video.id);
+        const tagsMap = {};
+        videoTags.forEach(t => {
+          const key = `${t.category_name}：${t.tag_name}`;
+          tagsMap[key] = t.confidence > 0 ? 1 : 0;
+        });
+
+        // 构建行数据
+        const row = [
+          video.title || video.id,
+          video.video_url || '',
+          ...metricNames.map(name => metricsMap[name] || ''),
+          ...allTags.map(t => tagsMap[t.columnName] || 0)
+        ];
+        rows.push(row);
+      }
+
+      // 生成CSV内容
+      const csvLines = [
+        headers.map(h => `"${h}"`).join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ];
+      const csvContent = csvLines.join('\n');
+
+      // 设置响应头
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const fileName = `${dateStr}-${project.name}-${videos.length}.csv`;
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      // 添加BOM以支持Excel正确显示中文
+      res.write('\ufeff');
+      res.end(csvContent, 'utf-8');
+      
+    } catch (error) {
+      console.error('下载项目数据失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '下载项目数据失败',
+        error: error.message
+      });
+    }
   }
 };

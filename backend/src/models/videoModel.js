@@ -193,5 +193,104 @@ export const VideoModel = {
       [videoId]
     );
     return rows;
+  },
+  // -----------------------------
+  // 主动挖掘（Discovery）相关
+  // -----------------------------
+
+  // 清空某个视频的主动挖掘标签
+  async deleteVideoDiscoveryTags(videoId) {
+    await pool.query('DELETE FROM video_discovery_tags WHERE video_id = ?', [videoId]);
+  },
+
+  // 批量保存视频主动挖掘标签（只保存“发现到”的标签）
+  async saveVideoDiscoveryTags(tags) {
+    if (!tags || tags.length === 0) return;
+    const values = tags.map(t => [t.video_id, t.project_id, t.category_name, t.tag_name]);
+    const placeholders = tags.map(() => '(?, ?, ?, ?)').join(',');
+
+    await pool.query(
+      `INSERT INTO video_discovery_tags (video_id, project_id, category_name, tag_name)
+       VALUES ${placeholders}
+       ON DUPLICATE KEY UPDATE created_at = created_at`,
+      values.flat()
+    );
+  },
+
+  // 获取某个视频的主动挖掘标签
+  async getVideoDiscoveryTags(videoId) {
+    const [rows] = await pool.query(
+      `SELECT vdt.*
+       FROM video_discovery_tags vdt
+       WHERE vdt.video_id = ?
+       ORDER BY vdt.category_name, vdt.tag_name`,
+      [videoId]
+    );
+    return rows;
+  },
+
+  // 获取某个项目所有视频的主动挖掘标签（用于项目汇总）
+  async getDiscoveryTagsByProject(projectId) {
+    const [rows] = await pool.query(
+      `SELECT vdt.*
+       FROM video_discovery_tags vdt
+       WHERE vdt.project_id = ?
+       ORDER BY vdt.video_id, vdt.category_name, vdt.tag_name`,
+      [projectId]
+    );
+    return rows;
+  },
+
+  // 项目级汇总标签：清空
+  async deleteProjectDiscoveryTags(projectId) {
+    await pool.query('DELETE FROM project_discovery_tags WHERE project_id = ?', [projectId]);
+  },
+
+  // 项目级汇总标签：批量保存
+  async saveProjectDiscoveryTags(projectId, tags) {
+    if (!tags || tags.length === 0) return;
+    const values = tags.map(t => [
+      projectId,
+      t.category_name,
+      t.tag_name,
+      t.aliases_json ? JSON.stringify(t.aliases_json) : null
+    ]);
+    const placeholders = tags.map(() => '(?, ?, ?, ?)').join(',');
+
+    await pool.query(
+      `INSERT INTO project_discovery_tags (project_id, category_name, tag_name, aliases_json)
+       VALUES ${placeholders}
+       ON DUPLICATE KEY UPDATE aliases_json = VALUES(aliases_json), updated_at = NOW()`,
+      values.flat()
+    );
+  },
+
+  // 项目级汇总标签：查询
+  async getProjectDiscoveryTags(projectId) {
+    const [rows] = await pool.query(
+      `SELECT * FROM project_discovery_tags
+       WHERE project_id = ?
+       ORDER BY category_name, tag_name`,
+      [projectId]
+    );
+    return rows;
+  },
+
+  // 项目汇总状态：更新/初始化
+  async updateProjectDiscoverySummary(projectId, status, progress = 0, errorMessage = null) {
+    await pool.query(
+      `INSERT INTO project_discovery_summary (project_id, status, progress, error_message)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE status = VALUES(status), progress = VALUES(progress), error_message = VALUES(error_message), updated_at = NOW()`,
+      [projectId, status, progress, errorMessage]
+    );
+  },
+
+  async getProjectDiscoverySummary(projectId) {
+    const [rows] = await pool.query(
+      `SELECT * FROM project_discovery_summary WHERE project_id = ?`,
+      [projectId]
+    );
+    return rows[0] || null;
   }
 };

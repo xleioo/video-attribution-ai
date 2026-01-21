@@ -266,7 +266,7 @@ const Settings: React.FC = () => {
                   </div>
                 </label>
                 
-                <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors opacity-60">
+                <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
                   <input
                     type="radio"
                     name="tagging_mode"
@@ -274,12 +274,10 @@ const Settings: React.FC = () => {
                     checked={taggingMode === 'discovery'}
                     onChange={(e) => setTaggingMode(e.target.value as 'discovery')}
                     className="mt-1"
-                    disabled
                   />
                   <div className="flex-1">
                     <div className="font-medium text-slate-800 flex items-center gap-2">
                       方式2: 主动挖掘
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">即将推出</span>
                     </div>
                     <div className="text-xs text-slate-500 mt-1">
                       AI 主动分析视频内容，挖掘并提取视频中的关键特征和元素，不限于预定义标签。

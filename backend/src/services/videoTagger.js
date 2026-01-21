@@ -153,11 +153,11 @@ You MUST return a valid JSON object with EXACTLY this structure:
 }
 `;
 
-    console.log(`[Gemini] 发送分析请求 (Model: gemini-2.5-flash)...`);
+    console.log(`[Gemini] 发送分析请求 (Model: gemini-3-pro-preview)...`);
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-pro-preview",
         contents: {
           parts: [
             {

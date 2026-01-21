@@ -1,6 +1,7 @@
 import { VideoModel } from '../models/videoModel.js';
 import { ProjectModel } from '../models/projectModel.js';
 import videoTaggerService from '../services/videoTagger.js';
+import videoDiscovererService from '../services/videoDiscoverer.js';
 
 export const videoController = {
   // 获取项目的所有视频
@@ -214,25 +215,22 @@ export const videoController = {
         });
       }
 
-      // 检查打标模式
+      // 根据打标模式分流
       const taggingMode = apiConfig.tagging_mode || 'comparison';
-      
-      if (taggingMode !== 'comparison') {
-        return res.status(400).json({
-          success: false,
-          message: '当前打标模式为"主动挖掘"，暂不支持。请在设置中切换为"对比打标"模式。'
-        });
-      }
 
-      // 添加到打标队列（仅对比打标模式）
-      await videoTaggerService.addToQueue(video_id, video.project_id, apiConfig.api_key);
+      if (taggingMode === 'discovery') {
+        await videoDiscovererService.addToQueue(video_id, video.project_id, apiConfig.api_key);
+      } else {
+        await videoTaggerService.addToQueue(video_id, video.project_id, apiConfig.api_key);
+      }
 
       res.json({
         success: true,
-        message: '视频已加入打标队列',
+        message: taggingMode === 'discovery' ? '视频已加入主动挖掘队列' : '视频已加入打标队列',
         data: {
           video_id,
-          status: 'processing'
+          status: 'processing',
+          tagging_mode: taggingMode
         }
       });
     } catch (error) {
@@ -259,8 +257,14 @@ export const videoController = {
         });
       }
 
-      // 获取标签
-      const tags = await VideoModel.getVideoTags(video_id);
+      // 获取标签：根据当前模式返回不同数据源
+      const { ApiConfigModel } = await import('../models/apiConfigModel.js');
+      const apiConfig = await ApiConfigModel.getActiveApiConfig();
+      const taggingMode = apiConfig?.tagging_mode || 'comparison';
+
+      const tags = taggingMode === 'discovery'
+        ? await VideoModel.getVideoDiscoveryTags(video_id)
+        : await VideoModel.getVideoTags(video_id);
 
       res.json({
         success: true,
@@ -269,6 +273,7 @@ export const videoController = {
           ai_tagging_status: video.ai_tagging_status,
           ai_tagging_progress: video.ai_tagging_progress,
           ai_tagging_error: video.ai_tagging_error,
+          tagging_mode: taggingMode,
           tags: tags
         }
       });
@@ -285,10 +290,14 @@ export const videoController = {
   // 获取打标队列状态
   async getTaggingQueueStatus(req, res) {
     try {
-      const status = videoTaggerService.getQueueStatus();
+      const comparison = videoTaggerService.getQueueStatus();
+      const discovery = videoDiscovererService.getQueueStatus();
       res.json({
         success: true,
-        data: status
+        data: {
+          comparison,
+          discovery
+        }
       });
     } catch (error) {
       console.error('获取打标队列状态失败:', error);

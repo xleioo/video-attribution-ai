@@ -1,10 +1,31 @@
 import React, { useState } from 'react';
 import { MOCK_ANALYSIS_RESULTS, MOCK_ANALYZED_VIDEOS } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
-import { Info, Video, Play, Tag as TagIcon, FileText } from 'lucide-react';
+import { Info, Video, Play, Tag as TagIcon, FileText, X } from 'lucide-react';
+
+interface VideoForPlayback {
+  id: string;
+  title: string;
+  local_path: string;
+  metrics: {
+    roi: number;
+    clicks: number;
+  };
+  tags: string[];
+}
 
 const Report: React.FC = () => {
   const [activeMetric, setActiveMetric] = useState(MOCK_ANALYSIS_RESULTS[0].metricId);
+  const [selectedVideo, setSelectedVideo] = useState<VideoForPlayback | null>(null);
+
+  // 将 MOCK_ANALYZED_VIDEOS 的 ID (vid_001, vid_002, ...) 映射到 project_2 的视频文件路径
+  const getVideoPath = (videoId: string): string | null => {
+    // vid_001 -> vid_2_1.mp4, vid_002 -> vid_2_2.mp4, ...
+    const match = videoId.match(/vid_(\d+)/);
+    if (!match) return null;
+    const num = parseInt(match[1], 10);
+    return `project_2/videos/vid_2_${num}.mp4`;
+  };
 
   const currentData = MOCK_ANALYSIS_RESULTS.find(m => m.metricId === activeMetric);
   // Sort descending by weight: Positive (Drivers) -> Negative (Inhibitors)
@@ -170,40 +191,136 @@ const Report: React.FC = () => {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {MOCK_ANALYZED_VIDEOS.map(video => (
-            <div key={video.id} className="border border-slate-100 rounded-lg p-4 hover:border-emerald-200 transition-all bg-slate-50/50 hover:bg-white hover:shadow-md group">
-              <div className="flex gap-4 mb-4">
-                 <div className="w-20 h-20 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-500 transition-colors">
-                   <Play size={24} fill="currentColor" />
-                 </div>
-                 <div className="flex-1 min-w-0">
-                   <h4 className="font-semibold text-slate-800 text-sm line-clamp-2 leading-relaxed mb-1" title={video.title}>{video.title}</h4>
-                   <div className="text-[10px] text-slate-400 font-mono mb-2">ID: {video.id}</div>
-                   <div className="flex gap-3 text-xs">
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 text-[10px]">ROI</span>
-                        <span className={`font-medium ${video.metrics.roi > 2 ? 'text-emerald-600' : 'text-slate-600'}`}>{video.metrics.roi}</span>
+          {MOCK_ANALYZED_VIDEOS.map(video => {
+            const videoPath = getVideoPath(video.id);
+            const hasVideo = videoPath !== null;
+            
+            return (
+              <div 
+                key={video.id} 
+                className="border border-slate-100 rounded-lg p-4 hover:border-emerald-200 transition-all bg-slate-50/50 hover:bg-white hover:shadow-md group cursor-pointer"
+                onClick={() => {
+                  if (hasVideo) {
+                    setSelectedVideo({
+                      id: video.id,
+                      title: video.title,
+                      local_path: videoPath!,
+                      metrics: video.metrics,
+                      tags: video.tags
+                    });
+                  }
+                }}
+              >
+                <div className="flex gap-4 mb-4">
+                  <div className="w-20 h-20 rounded-lg shrink-0 overflow-hidden relative group/thumb">
+                    {hasVideo ? (
+                      <>
+                        {/* 使用 video 标签显示第一帧作为缩略图 */}
+                        <video
+                          src={`http://localhost:3001/storage/${videoPath}#t=0.1`}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                        />
+                        {/* 播放图标覆盖层 */}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                          <Play size={24} fill="white" className="text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 shrink-0 group-hover:bg-emerald-100 group-hover:text-emerald-500 transition-colors">
+                        <Play size={24} fill="currentColor" />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 text-[10px]">Clicks</span>
-                        <span className="font-medium text-slate-600">{video.metrics.clicks.toLocaleString()}</span>
-                      </div>
-                   </div>
-                 </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-slate-800 text-sm line-clamp-2 leading-relaxed mb-1" title={video.title}>{video.title}</h4>
+                    <div className="text-[10px] text-slate-400 font-mono mb-2">ID: {video.id}</div>
+                    <div className="flex gap-3 text-xs">
+                       <div className="flex flex-col">
+                         <span className="text-slate-400 text-[10px]">ROI</span>
+                         <span className={`font-medium ${video.metrics.roi > 2 ? 'text-emerald-600' : 'text-slate-600'}`}>{video.metrics.roi}</span>
+                       </div>
+                       <div className="flex flex-col">
+                         <span className="text-slate-400 text-[10px]">Clicks</span>
+                         <span className="font-medium text-slate-600">{video.metrics.clicks.toLocaleString()}</span>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-1.5">
+                  {video.tags.map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] rounded-md flex items-center gap-1">
+                      <TagIcon size={8} className="opacity-50" />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
-              
-              <div className="flex flex-wrap gap-1.5">
-                {video.tags.map(tag => (
-                  <span key={tag} className="px-2 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] rounded-md flex items-center gap-1">
-                    <TagIcon size={8} className="opacity-50" />
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {/* 视频播放模态框 */}
+      {selectedVideo && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedVideo(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold text-slate-800 flex-1">
+                {selectedVideo.title || selectedVideo.id}
+              </h3>
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {selectedVideo.title && (
+              <p className="text-xs text-slate-500 mb-4">ID: {selectedVideo.id}</p>
+            )}
+            <video
+              controls
+              className="w-full max-w-[300px] mx-auto rounded-lg"
+              src={`http://localhost:3001/storage/${selectedVideo.local_path}`}
+            >
+              您的浏览器不支持视频播放
+            </video>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600">
+              <div>
+                <span className="text-slate-400 text-xs">ROI</span>{' '}
+                <div className="font-medium text-slate-900">{selectedVideo.metrics.roi}</div>
+              </div>
+              <div>
+                <span className="text-slate-400 text-xs">Clicks</span>{' '}
+                <div className="font-medium text-slate-900">{selectedVideo.metrics.clicks.toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* 显示标签 */}
+            {selectedVideo.tags && selectedVideo.tags.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">标签</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedVideo.tags.map(tag => (
+                    <span key={tag} className="px-2 py-1 bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-md flex items-center gap-1">
+                      <TagIcon size={10} className="opacity-50" />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

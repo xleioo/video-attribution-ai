@@ -13,7 +13,7 @@ import {
   Table,
   Download,
 } from 'lucide-react';
-import { videoApi, projectApi } from '../services/apiService';
+import { videoApi, projectApi, apiConfigApi } from '../services/apiService';
 import type { Video, VideoStats, ProjectStatus, Project } from '../types';
 
 interface ProjectDetailProps {
@@ -31,6 +31,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
   const [activeMetric, setActiveMetric] = useState<string | null>(null);
   const [videoMetrics, setVideoMetrics] = useState<{ [key: string]: any }>({});
   const [videoTags, setVideoTags] = useState<{ [key: string]: any }>({});
+  const [taggingMode, setTaggingMode] = useState<'comparison' | 'discovery'>('comparison');
 
   // 加载项目信息
   const loadProject = async () => {
@@ -98,6 +99,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
   useEffect(() => {
     const initLoad = async () => {
       setIsLoading(true);
+      // 加载当前打标模式（全局设置）
+      try {
+        const cfg = await apiConfigApi.getActiveApiConfig();
+        if (cfg?.success && cfg.data && (cfg.data as any).tagging_mode) {
+          setTaggingMode((cfg.data as any).tagging_mode);
+        }
+      } catch (e) {
+        // 没有配置或 404 时，默认 comparison
+      }
       await loadProject();
       await loadProjectStatus();
       const videosData = await loadVideos();
@@ -450,8 +460,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {(() => {
-                          // 只显示检测到的标签 (confidence > 0)
-                          const detectedTags = videoTags[video.id]?.tags?.filter((t: any) => t.confidence > 0) || [];
+                          const tags = videoTags[video.id]?.tags || [];
+                          // comparison：只显示命中标签；discovery：tags 本身就是“发现到”的标签
+                          const detectedTags = taggingMode === 'comparison'
+                            ? (tags.filter((t: any) => t.confidence > 0) || [])
+                            : tags;
                           const displayTags = detectedTags.slice(0, 3);
                           const remainingCount = detectedTags.length - 3;
                           
@@ -459,7 +472,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                             <>
                               {displayTags.map((tag: any, index: number) => (
                                 <span
-                                  key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`}
+                                  key={tag.id || `${tag.tag_category_id || tag.category_name}-${tag.tag_name}-${index}`}
                                   className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded"
                                 >
                                   {tag.tag_name}
@@ -732,26 +745,62 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                 </div>
               )}
 
-              {/* 显示AI标签（包括未检测到的） */}
+              {/* 显示AI标签/主动挖掘标签 */}
               {videoTags[selectedVideo.id]?.ai_tagging_status === 'completed' && videoTags[selectedVideo.id]?.tags?.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-slate-200">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-3">AI 内容标签分析</h4>
-                  <div className="space-y-2">
-                    {videoTags[selectedVideo.id].tags.map((tag: any, index: number) => {
-                      const isDetected = tag.confidence > 0;
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                    {taggingMode === 'discovery' ? '主动挖掘：视频元素标签' : 'AI 内容标签分析'}
+                  </h4>
+
+                  {taggingMode === 'discovery' ? (
+                    (() => {
+                      const tags = videoTags[selectedVideo.id].tags || [];
+                      const grouped: Record<string, any[]> = {};
+                      tags.forEach((t: any) => {
+                        const cat = t.category_name || '视频元素';
+                        grouped[cat] = grouped[cat] || [];
+                        grouped[cat].push(t);
+                      });
+                      const categories = Object.keys(grouped).sort();
+
                       return (
-                        <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`} className="flex items-center gap-2">
-                          <span className={isDetected ? "text-emerald-600" : "text-slate-300"}>
-                            {isDetected ? "✓" : "✗"}
-                          </span>
-                          <span className={`text-xs ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
-                            {tag.tag_name}
-                          </span>
-                          <span className="text-[10px] text-slate-400">({tag.category_name})</span>
+                        <div className="space-y-3">
+                          {categories.map((cat) => (
+                            <div key={cat}>
+                              <div className="text-xs text-slate-500 mb-2">{cat}</div>
+                              <div className="flex flex-wrap gap-1">
+                                {grouped[cat].map((tag: any, index: number) => (
+                                  <span
+                                    key={`${cat}-${tag.tag_name}-${index}`}
+                                    className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
+                                  >
+                                    {tag.tag_name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       );
-                    })}
-                  </div>
+                    })()
+                  ) : (
+                    <div className="space-y-2">
+                      {videoTags[selectedVideo.id].tags.map((tag: any, index: number) => {
+                        const isDetected = tag.confidence > 0;
+                        return (
+                          <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`} className="flex items-center gap-2">
+                            <span className={isDetected ? "text-emerald-600" : "text-slate-300"}>
+                              {isDetected ? "✓" : "✗"}
+                            </span>
+                            <span className={`text-xs ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                              {tag.tag_name}
+                            </span>
+                            <span className="text-[10px] text-slate-400">({tag.category_name})</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

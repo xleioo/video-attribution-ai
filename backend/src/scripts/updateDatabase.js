@@ -195,6 +195,56 @@ async function updateDatabase() {
         console.error(`  ❌ 添加 ${col.name} 列失败:`, error.message);
       }
     }
+
+    // 7. 主动挖掘：视频发现标签表（自由标签）
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS video_discovery_tags (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        video_id VARCHAR(100) NOT NULL COMMENT '视频ID',
+        project_id INT NOT NULL COMMENT '所属项目ID',
+        category_name VARCHAR(100) NOT NULL COMMENT '标签类别名（如：视频元素、爆款潜质）',
+        tag_name VARCHAR(255) NOT NULL COMMENT '标签名称',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        INDEX idx_video_id (video_id),
+        INDEX idx_project_id (project_id),
+        INDEX idx_category_name (category_name),
+        UNIQUE KEY uniq_video_discovery_tag (video_id, category_name, tag_name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主动挖掘-视频发现标签表'
+    `);
+    console.log('✅ 创建 video_discovery_tags 表');
+
+    // 8. 主动挖掘：项目级汇总标签表（用于下载列集合）
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS project_discovery_tags (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        project_id INT NOT NULL COMMENT '所属项目ID',
+        category_name VARCHAR(100) NOT NULL COMMENT '标签类别名（如：视频元素、爆款潜质）',
+        tag_name VARCHAR(255) NOT NULL COMMENT '汇总后的标签名称（规范化）',
+        aliases_json JSON NULL COMMENT '同义/别名列表（用于映射 one-hot）',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        INDEX idx_project_id (project_id),
+        INDEX idx_category_name (category_name),
+        UNIQUE KEY uniq_project_discovery_tag (project_id, category_name, tag_name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主动挖掘-项目汇总标签表'
+    `);
+    console.log('✅ 创建 project_discovery_tags 表');
+
+    // 9. 主动挖掘：项目汇总状态表（首次下载触发汇总时使用）
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS project_discovery_summary (
+        project_id INT PRIMARY KEY COMMENT '所属项目ID',
+        status ENUM('processing', 'completed', 'error') DEFAULT NULL COMMENT '汇总状态：NULL=未开始，processing=处理中，completed=已完成，error=失败',
+        progress INT DEFAULT 0 COMMENT '汇总进度',
+        error_message TEXT COMMENT '错误信息',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='主动挖掘-项目标签汇总状态'
+    `);
+    console.log('✅ 创建 project_discovery_summary 表');
     
     console.log('\n✨ 数据库结构更新完成！\n');
     

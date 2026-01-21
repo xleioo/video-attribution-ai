@@ -42,7 +42,7 @@ export const analyzeVideoWithGemini = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Efficient and capable for video understanding
+      model: "gemini-3-pro-preview", // Unified model
       contents: {
         parts: [
           {

@@ -1,6 +1,7 @@
 import { ProjectModel } from '../models/projectModel.js';
 import { VideoModel } from '../models/videoModel.js';
 import videoDownloaderService from '../services/videoDownloader.js';
+import { summarizeProjectDiscoveryTags } from '../services/projectDiscoverySummarizer.js';
 
 export const projectController = {
   // 获取所有项目
@@ -255,21 +256,49 @@ export const projectController = {
         });
       }
 
-      // 获取所有标签分类和标签
-      const { TagModel } = await import('../models/tagModel.js');
-      const tagCategories = await TagModel.getAllTagCategoriesWithTags();
-      
-      // 构建所有标签列表（格式：标签类别名：标签名）
-      const allTags = [];
-      tagCategories.forEach(cat => {
-        cat.tags.forEach(tagName => {
-          allTags.push({
-            categoryName: cat.name,
-            tagName: tagName,
-            columnName: `${cat.name}：${tagName}`
+      // 根据当前打标模式决定下载逻辑：
+      // - comparison：沿用预设标签体系（video_tags + tag_categories）
+      // - discovery：使用项目级汇总标签（project_discovery_tags），首次下载触发 Gemini 汇总
+      const { ApiConfigModel } = await import('../models/apiConfigModel.js');
+      const apiConfig = await ApiConfigModel.getActiveApiConfig();
+      const taggingMode = apiConfig?.tagging_mode || 'comparison';
+
+      let allTags = []; // { columnName, categoryName, tagName, aliases? }
+
+      if (taggingMode === 'discovery') {
+        // 确保项目级汇总标签已生成（首次下载触发）
+        let projectTags = await VideoModel.getProjectDiscoveryTags(id);
+        if (!projectTags || projectTags.length === 0) {
+          if (!apiConfig?.api_key) {
+            return res.status(400).json({
+              success: false,
+              message: '主动挖掘模式下载需要有效的 Gemini API Key，请先在设置页面配置'
+            });
+          }
+          await summarizeProjectDiscoveryTags(id, apiConfig.api_key);
+          projectTags = await VideoModel.getProjectDiscoveryTags(id);
+        }
+
+        allTags = projectTags.map(t => ({
+          categoryName: t.category_name,
+          tagName: t.tag_name,
+          aliases: t.aliases_json ? (typeof t.aliases_json === 'string' ? JSON.parse(t.aliases_json) : t.aliases_json) : [],
+          columnName: `${t.category_name}：${t.tag_name}`
+        }));
+      } else {
+        // comparison 模式：预设标签体系
+        const { TagModel } = await import('../models/tagModel.js');
+        const tagCategories = await TagModel.getAllTagCategoriesWithTags();
+        tagCategories.forEach(cat => {
+          cat.tags.forEach(tagName => {
+            allTags.push({
+              categoryName: cat.name,
+              tagName: tagName,
+              columnName: `${cat.name}：${tagName}`
+            });
           });
         });
-      });
+      }
 
       // 获取项目的指标字段
       const metricsColumns = project.column_mapping?.metrics || {};
@@ -293,13 +322,31 @@ export const projectController = {
           metricsMap[m.metric_name] = m.metric_value;
         });
 
-        // 获取视频的标签数据
-        const videoTags = await VideoModel.getVideoTags(video.id);
+        // 获取视频的标签数据（按模式）
         const tagsMap = {};
-        videoTags.forEach(t => {
-          const key = `${t.category_name}：${t.tag_name}`;
-          tagsMap[key] = t.confidence > 0 ? 1 : 0;
-        });
+        if (taggingMode === 'discovery') {
+          const videoDiscTags = await VideoModel.getVideoDiscoveryTags(video.id);
+          // 用 category => Set(tag)
+          const catMap = new Map();
+          for (const t of videoDiscTags) {
+            const cat = t.category_name || '视频元素';
+            if (!catMap.has(cat)) catMap.set(cat, new Set());
+            catMap.get(cat).add(t.tag_name);
+          }
+          // 对每一个项目级列，检查本视频是否命中（tag_name 或 aliases 命中即 1）
+          for (const col of allTags) {
+            const set = catMap.get(col.categoryName) || new Set();
+            const aliases = Array.isArray(col.aliases) ? col.aliases : [];
+            const hit = set.has(col.tagName) || aliases.some(a => set.has(a));
+            tagsMap[col.columnName] = hit ? 1 : 0;
+          }
+        } else {
+          const videoTags = await VideoModel.getVideoTags(video.id);
+          videoTags.forEach(t => {
+            const key = `${t.category_name}：${t.tag_name}`;
+            tagsMap[key] = t.confidence > 0 ? 1 : 0;
+          });
+        }
 
         // 构建行数据
         const row = [

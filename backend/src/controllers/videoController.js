@@ -203,7 +203,7 @@ export const videoController = {
         });
       }
 
-      // 从数据库获取 API Key
+      // 从数据库获取 API Key 和打标模式
       const { ApiConfigModel } = await import('../models/apiConfigModel.js');
       const apiConfig = await ApiConfigModel.getActiveApiConfig();
       
@@ -214,7 +214,17 @@ export const videoController = {
         });
       }
 
-      // 添加到打标队列
+      // 检查打标模式
+      const taggingMode = apiConfig.tagging_mode || 'comparison';
+      
+      if (taggingMode !== 'comparison') {
+        return res.status(400).json({
+          success: false,
+          message: '当前打标模式为"主动挖掘"，暂不支持。请在设置中切换为"对比打标"模式。'
+        });
+      }
+
+      // 添加到打标队列（仅对比打标模式）
       await videoTaggerService.addToQueue(video_id, video.project_id, apiConfig.api_key);
 
       res.json({

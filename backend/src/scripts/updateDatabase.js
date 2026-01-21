@@ -49,6 +49,27 @@ async function updateDatabase() {
     }
     console.log('✅ 更新 projects 表结构完成');
     
+    // 1.5 更新 api_configs 表，添加打标模式字段
+    try {
+      const [taggingModeCol] = await connection.query(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'api_configs' AND COLUMN_NAME = 'tagging_mode'",
+        [process.env.DB_NAME || 'short_video_attribution']
+      );
+      
+      if (taggingModeCol.length === 0) {
+        await connection.query(`
+          ALTER TABLE api_configs 
+          ADD COLUMN tagging_mode ENUM('comparison', 'discovery') DEFAULT 'comparison' COMMENT '打标模式: comparison=对比打标, discovery=主动挖掘'
+        `);
+        console.log('  ✅ 添加列: tagging_mode (打标模式)');
+      } else {
+        console.log('  ⏭️  列已存在: tagging_mode');
+      }
+    } catch (error) {
+      console.error('  ❌ 添加 tagging_mode 列失败:', error.message);
+    }
+    console.log('✅ 更新 api_configs 表结构完成');
+    
     // 2. 创建视频表
     await connection.query(`
       CREATE TABLE IF NOT EXISTS videos (

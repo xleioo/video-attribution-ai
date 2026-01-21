@@ -173,6 +173,7 @@ export const apiConfigApi = {
     api_endpoint?: string;
     provider?: string;
     is_active?: boolean;
+    tagging_mode?: 'comparison' | 'discovery';
   }) {
     return request('/api/config', {
       method: 'POST',
@@ -189,6 +190,7 @@ export const apiConfigApi = {
       api_endpoint?: string;
       provider?: string;
       is_active?: boolean;
+      tagging_mode?: 'comparison' | 'discovery';
     }
   ) {
     return request(`/api/config/${id}`, {

@@ -20,20 +20,20 @@ export const ApiConfigModel = {
 
   // 创建API配置
   async createApiConfig(configData) {
-    const { config_name, api_key, api_endpoint, provider = 'gemini', is_active = true } = configData;
+    const { config_name, api_key, api_endpoint, provider = 'gemini', is_active = true, tagging_mode = 'comparison' } = configData;
     const [result] = await pool.query(
-      'INSERT INTO api_configs (config_name, api_key, api_endpoint, provider, is_active) VALUES (?, ?, ?, ?, ?)',
-      [config_name, api_key, api_endpoint, provider, is_active]
+      'INSERT INTO api_configs (config_name, api_key, api_endpoint, provider, is_active, tagging_mode) VALUES (?, ?, ?, ?, ?, ?)',
+      [config_name, api_key, api_endpoint, provider, is_active, tagging_mode]
     );
     return result.insertId;
   },
 
   // 更新API配置
   async updateApiConfig(id, configData) {
-    const { config_name, api_key, api_endpoint, provider, is_active } = configData;
+    const { config_name, api_key, api_endpoint, provider, is_active, tagging_mode } = configData;
     const [result] = await pool.query(
-      'UPDATE api_configs SET config_name = ?, api_key = ?, api_endpoint = ?, provider = ?, is_active = ? WHERE id = ?',
-      [config_name, api_key, api_endpoint, provider, is_active, id]
+      'UPDATE api_configs SET config_name = ?, api_key = ?, api_endpoint = ?, provider = ?, is_active = ?, tagging_mode = ? WHERE id = ?',
+      [config_name, api_key, api_endpoint, provider, is_active, tagging_mode, id]
     );
     return result.affectedRows;
   },

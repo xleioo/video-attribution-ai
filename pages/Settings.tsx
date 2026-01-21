@@ -19,11 +19,32 @@ const Settings: React.FC = () => {
   // State for API Key testing
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // State for tagging mode
+  const [taggingMode, setTaggingMode] = useState<'comparison' | 'discovery'>('comparison');
+
+  // 加载现有配置
+  React.useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await apiConfigApi.getActiveApiConfig();
+        if (response.success && response.data) {
+          const config = response.data as any;
+          if (config.tagging_mode) {
+            setTaggingMode(config.tagging_mode);
+          }
+        }
+      } catch (error) {
+        console.log('加载配置失败:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   const handleSave = async () => {
     updateTagTaxonomy(localTaxonomy);
     
-    // 保存API Key到数据库
+    // 保存API Key和打标模式到数据库
     if (apiKey) {
       try {
         // 检查是否已有活跃配置
@@ -35,7 +56,8 @@ const Settings: React.FC = () => {
             config_name: 'Gemini API',
             api_key: apiKey,
             provider: 'gemini',
-            is_active: true
+            is_active: true,
+            tagging_mode: taggingMode
           });
         } else {
           // 创建新配置
@@ -43,7 +65,8 @@ const Settings: React.FC = () => {
             config_name: 'Gemini API',
             api_key: apiKey,
             provider: 'gemini',
-            is_active: true
+            is_active: true,
+            tagging_mode: taggingMode
           });
         }
         alert("配置保存成功！");
@@ -172,52 +195,105 @@ const Settings: React.FC = () => {
          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             AI 模型配置
          </h3>
-         <div className="max-w-xl">
-            <label className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
-            <div className="flex gap-2">
-              <input 
-                type="password" 
-                value={apiKey || ''}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  setTestResult(null); // 清除之前的测试结果
-                }}
-                placeholder="AIza..."
-                className="flex-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              />
-              <button
-                onClick={handleTestApiKey}
-                disabled={isTestingKey || !apiKey}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isTestingKey ? (
-                  <>
-                    <Loader size={16} className="animate-spin" />
-                    测试中...
-                  </>
-                ) : (
-                  <>
-                    <TestTube size={16} />
-                    测试
-                  </>
-                )}
-              </button>
-            </div>
-            
-            {/* 测试结果 */}
-            {testResult && (
-              <div className={`mt-2 p-2 rounded text-sm ${
-                testResult.success 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                  : 'bg-rose-50 text-rose-700 border border-rose-200'
-              }`}>
-                {testResult.message}
+         <div className="max-w-xl space-y-4">
+            {/* API Key */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
+              <div className="flex gap-2">
+                <input 
+                  type="password" 
+                  value={apiKey || ''}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setTestResult(null); // 清除之前的测试结果
+                  }}
+                  placeholder="AIza..."
+                  className="flex-1 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                />
+                <button
+                  onClick={handleTestApiKey}
+                  disabled={isTestingKey || !apiKey}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md flex items-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isTestingKey ? (
+                    <>
+                      <Loader size={16} className="animate-spin" />
+                      测试中...
+                    </>
+                  ) : (
+                    <>
+                      <TestTube size={16} />
+                      测试
+                    </>
+                  )}
+                </button>
               </div>
-            )}
-            
-            <p className="text-xs text-slate-500 mt-2">
-              用于视频打标功能中的自动化视频内容理解与标签识别。保存后所有视频打标将自动使用此 Key。
-            </p>
+              
+              {/* 测试结果 */}
+              {testResult && (
+                <div className={`mt-2 p-2 rounded text-sm ${
+                  testResult.success 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                }`}>
+                  {testResult.message}
+                </div>
+              )}
+              
+              <p className="text-xs text-slate-500 mt-2">
+                用于视频打标功能中的自动化视频内容理解与标签识别。保存后所有视频打标将自动使用此 Key。
+              </p>
+            </div>
+
+            {/* 打标模式选择 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">视频打标模式</label>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="tagging_mode"
+                    value="comparison"
+                    checked={taggingMode === 'comparison'}
+                    onChange={(e) => setTaggingMode(e.target.value as 'comparison')}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-800">方式1: 对比打标</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      根据下方"内容标签体系配置"中已定义的标签对视频进行逐一比对，识别视频中包含的标签。
+                    </div>
+                  </div>
+                </label>
+                
+                <label className="flex items-start gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors opacity-60">
+                  <input
+                    type="radio"
+                    name="tagging_mode"
+                    value="discovery"
+                    checked={taggingMode === 'discovery'}
+                    onChange={(e) => setTaggingMode(e.target.value as 'discovery')}
+                    className="mt-1"
+                    disabled
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-800 flex items-center gap-2">
+                      方式2: 主动挖掘
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">即将推出</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      AI 主动分析视频内容，挖掘并提取视频中的关键特征和元素，不限于预定义标签。
+                    </div>
+                  </div>
+                </label>
+              </div>
+              
+              {taggingMode === 'comparison' && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                  💡 提示：当前模式下，只有在下方"内容标签体系配置"中定义的标签才会被识别。
+                </div>
+              )}
+            </div>
          </div>
       </section>
 

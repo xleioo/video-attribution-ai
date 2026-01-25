@@ -18,9 +18,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
     <aside className="w-64 bg-slate-900 text-white min-h-screen flex flex-col fixed left-0 top-0 bottom-0 z-10 shadow-xl">
       <div className="p-6 border-b border-slate-700">
         <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-          Elixir AI Analytics
+          AI Short Video Analytics
         </h1>
-        <p className="text-xs text-slate-400 mt-1">V面霜内容归因引擎</p>
+        <p className="text-xs text-slate-400 mt-1">内容归因引擎</p>
       </div>
       
       <nav className="flex-1 py-6 px-3 space-y-2">

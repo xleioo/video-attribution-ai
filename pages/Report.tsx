@@ -43,7 +43,7 @@ const Report: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <FileText className="text-slate-400" />
-            分析报告: V面霜_Q3投放_Batch_A.csv
+            分析报告: 面霜_Q3投放_Batch_A.csv
           </h2>
           <p className="text-slate-500 text-sm mt-1 ml-8">基于二项式回归模型 (Binomial Regression) 的特征权重分析</p>
         </div>

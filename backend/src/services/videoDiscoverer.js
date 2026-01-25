@@ -89,10 +89,12 @@ class VideoDiscovererService {
       // 2) 调用 Gemini (50%)
       await VideoModel.updateVideoTaggingStatus(video_id, 'processing', 50);
       const result = await this.analyzeWithGemini(gemini_api_key, base64Video, 'video/mp4');
+      const narrativeInsights = await this.analyzeNarratives(gemini_api_key, base64Video, 'video/mp4');
 
       // 3) 保存结果 (80%)
       await VideoModel.updateVideoTaggingStatus(video_id, 'processing', 80);
       await this.saveDiscoveryResults(video_id, project_id, result);
+      await VideoModel.saveVideoNarratives(video_id, narrativeInsights);
 
       // 4) 完成 (100%)
       await VideoModel.updateVideoTaggingStatus(video_id, 'completed', 100);
@@ -124,7 +126,9 @@ class VideoDiscovererService {
 4) 输出尽量结构化，便于 UI 展示：将标签按类别分组。
 
 【需要挖掘的视频特点维度】（但不仅限于以下，可根据视频内容自由扩展类别）：
-
+0. **开场钩子** (Opening)
+   - 例如：开场是怎么抓住5秒内观众的注意力的
+   - 关注：视觉钩子，音频钩子，画面和声音的组合，悬念设计，完播动机等
 1. **视觉风格** (Visual Style)
    - 例如：电影感、Vlog风格、动画风格、极简主义、复古风、现代感、日系、韩系等
    - 关注：画面质感、色彩风格、构图方式、镜头语言
@@ -159,6 +163,7 @@ class VideoDiscovererService {
 输出格式：你必须返回一个合法 JSON（不要 Markdown），结构如下：
 {
   "elements": [
+    { "category": "开场钩子", "tags": ["视觉钩子", "音频钩子", "画面和声音的组合", "悬念设计", "完播动机"] },
     { "category": "视觉风格", "tags": ["电影感", "极简主义"] },
     { "category": "核心话题或主题", "tags": ["护肤教程", "产品测评"] },
     { "category": "出现的物体、场景或地点", "tags": ["室内场景", "化妆台"] },
@@ -203,6 +208,78 @@ class VideoDiscovererService {
     } catch (e) {
       console.error('[Gemini][Discovery] JSON 解析失败，原始响应:', text);
       throw new Error('Gemini 返回内容无法解析为 JSON');
+    }
+  }
+
+  buildNarrativePrompt() {
+    return `
+你是品牌的资深短视频分析专家，需要输出两个部分：
+1) 前5秒内容拆解：描述前5秒具体镜头、话术、悬念设计等，并给出亮点。
+2) 全片结构总结：识别视频整体结构，基于“痛点引入 -> 产品引入 -> 信任背书 -> 行动呼吁 (CTA)”等典型漏斗阶段进行判断，可根据实际情况补充/删减阶段。
+
+分析要求：
+- 先完整观看全片再输出；
+- 每个结论要有画面或音频证据支撑，引用具体秒数；
+- 可用 bullet/short sentence 形式，便于 UI 展示；
+
+输出 JSON，结构如下：
+{
+  "first5s_analysis": {
+    "hook_strength": "强/中/弱",
+    "highlight": "",
+    "issue": "",
+    "timeline": [
+      {"second": 0, "description": ""}
+    ]
+  },
+  "video_summary": {
+    "structure": [
+      {"stage": "痛点引入", "present": true, "evidence": "", "timestamp": "0-5s"},
+      {"stage": "产品引入", ... }
+    ],
+    "overall_takeaway": ""
+  }
+}
+
+请一定返回合法 JSON，不要包含 Markdown。
+`;
+  }
+
+  async analyzeNarratives(apiKey, base64Video, mimeType) {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = this.buildNarrativePrompt();
+
+    console.log('[Gemini][Discovery] 发送叙事洞察分析请求 (Model: gemini-3-pro-preview)...');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: {
+        parts: [
+          { inlineData: { mimeType, data: base64Video } },
+          { text: prompt }
+        ]
+      },
+      config: { responseMimeType: 'application/json', temperature: 0.2 }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error('Gemini 叙事分析返回空响应');
+
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    }
+
+    try {
+      const json = JSON.parse(cleanText);
+      return {
+        first5s_analysis: json.first5s_analysis || null,
+        video_summary: json.video_summary || null
+      };
+    } catch (err) {
+      console.error('[Gemini][Discovery] 叙事分析 JSON 解析失败:', err);
+      return { first5s_analysis: null, video_summary: null };
     }
   }
 
@@ -261,4 +338,3 @@ class VideoDiscovererService {
 
 const videoDiscovererService = new VideoDiscovererService();
 export default videoDiscovererService;
-

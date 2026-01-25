@@ -3,6 +3,17 @@ import { ProjectModel } from '../models/projectModel.js';
 import videoTaggerService from '../services/videoTagger.js';
 import videoDiscovererService from '../services/videoDiscoverer.js';
 
+const parseJsonField = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    console.warn('[VideoController] JSON 字段解析失败:', err?.message || err);
+    return null;
+  }
+};
+
 export const videoController = {
   // 获取项目的所有视频
   async getProjectVideos(req, res) {
@@ -64,6 +75,8 @@ export const videoController = {
       // 获取视频的指标数据
       const metrics = await VideoModel.getVideoMetrics(video_id);
       video.metrics = metrics;
+      video.first5s_analysis = parseJsonField(video.first5s_analysis || null);
+      video.video_summary = parseJsonField(video.video_summary || null);
       
       res.json({
         success: true,
@@ -274,7 +287,9 @@ export const videoController = {
           ai_tagging_progress: video.ai_tagging_progress,
           ai_tagging_error: video.ai_tagging_error,
           tagging_mode: taggingMode,
-          tags: tags
+          tags,
+          first5s_analysis: parseJsonField(video.first5s_analysis || null),
+          video_summary: parseJsonField(video.video_summary || null)
         }
       });
     } catch (error) {

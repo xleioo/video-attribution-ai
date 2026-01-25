@@ -194,6 +194,36 @@ export const VideoModel = {
     );
     return rows;
   },
+
+  // 保存视频的叙事类分析结果
+  async saveVideoNarratives(videoId, narratives = {}) {
+    const updates = [];
+    const values = [];
+
+    if (Object.prototype.hasOwnProperty.call(narratives, 'first5s_analysis')) {
+      updates.push('first5s_analysis = ?');
+      const value = narratives.first5s_analysis
+        ? JSON.stringify(narratives.first5s_analysis)
+        : null;
+      values.push(value);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(narratives, 'video_summary')) {
+      updates.push('video_summary = ?');
+      const value = narratives.video_summary
+        ? JSON.stringify(narratives.video_summary)
+        : null;
+      values.push(value);
+    }
+
+    if (updates.length === 0) return;
+
+    const setSql = `${updates.join(', ')}, updated_at = NOW()`;
+    await pool.query(
+      `UPDATE videos SET ${setSql} WHERE id = ?`,
+      [...values, videoId]
+    );
+  },
   // -----------------------------
   // 主动挖掘（Discovery）相关
   // -----------------------------

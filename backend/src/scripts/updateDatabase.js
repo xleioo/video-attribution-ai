@@ -196,6 +196,30 @@ async function updateDatabase() {
       }
     }
 
+    // 6.1 更新 videos 表，添加视频洞察结果存储列
+    const narrativeColumns = [
+      { name: 'first5s_analysis', sql: "ADD COLUMN first5s_analysis JSON NULL COMMENT '前5秒分析结果' AFTER ai_tagging_error" },
+      { name: 'video_summary', sql: "ADD COLUMN video_summary JSON NULL COMMENT '完整视频总结' AFTER first5s_analysis" }
+    ];
+
+    for (const col of narrativeColumns) {
+      try {
+        const [columns] = await connection.query(
+          "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'videos' AND COLUMN_NAME = ?",
+          [process.env.DB_NAME || 'short_video_attribution', col.name]
+        );
+
+        if (columns.length === 0) {
+          await connection.query(`ALTER TABLE videos ${col.sql}`);
+          console.log(`  ✅ 添加列: ${col.name} 到 videos 表`);
+        } else {
+          console.log(`  ⏭️  列已存在: ${col.name}`);
+        }
+      } catch (error) {
+        console.error(`  ❌ 添加 ${col.name} 列失败:`, error.message);
+      }
+    }
+
     // 7. 主动挖掘：视频发现标签表（自由标签）
     await connection.query(`
       CREATE TABLE IF NOT EXISTS video_discovery_tags (

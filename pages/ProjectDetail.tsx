@@ -267,6 +267,64 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
     );
   };
 
+  const renderFirstFiveSeconds = (analysis: any) => {
+    if (!analysis) return null;
+    return (
+      <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-2">
+        {Array.isArray(analysis.timeline) && analysis.timeline.length > 0 && (
+          <div className="space-y-1">
+            {analysis.timeline.map((item: any, idx: number) => (
+              <div key={idx} className="flex items-start gap-2 text-[11px]">
+                <span className="text-slate-400">{item.second}s</span>
+                <span className="flex-1">{item.description}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {analysis.hook_strength && (
+            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">钩子: {analysis.hook_strength}</span>
+          )}
+          {analysis.highlight && (
+            <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">亮点: {analysis.highlight}</span>
+          )}
+          {analysis.issue && (
+            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-700">问题: {analysis.issue}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderVideoSummary = (summary: any) => {
+    if (!summary) return null;
+    return (
+      <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-2">
+        {Array.isArray(summary.structure) && summary.structure.length > 0 && (
+          <div className="space-y-1">
+            {summary.structure.map((stage: any, idx: number) => (
+              <div
+                key={idx}
+                className={`flex items-start gap-2 ${stage.present ? 'text-slate-700' : 'text-slate-400 line-through'}`}
+              >
+                <span className="font-medium w-20">{stage.stage}</span>
+                <div className="flex-1">
+                  <div>{stage.evidence || '未覆盖'}</div>
+                  {stage.timestamp && (
+                    <div className="text-[10px] text-slate-400">{stage.timestamp}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {summary.overall_takeaway && (
+          <div className="text-[11px] text-slate-500">总结：{summary.overall_takeaway}</div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -746,59 +804,79 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
               )}
 
               {/* 显示AI标签/主动挖掘标签 */}
-              {videoTags[selectedVideo.id]?.ai_tagging_status === 'completed' && videoTags[selectedVideo.id]?.tags?.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-3">
-                    {taggingMode === 'discovery' ? '主动挖掘：视频元素标签' : 'AI 内容标签分析'}
-                  </h4>
+              {videoTags[selectedVideo.id]?.ai_tagging_status === 'completed' && (
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                      {taggingMode === 'discovery' ? '主动挖掘：视频元素标签' : 'AI 内容标签分析'}
+                    </h4>
 
-                  {taggingMode === 'discovery' ? (
-                    (() => {
-                      const tags = videoTags[selectedVideo.id].tags || [];
-                      const grouped: Record<string, any[]> = {};
-                      tags.forEach((t: any) => {
-                        const cat = t.category_name || '视频元素';
-                        grouped[cat] = grouped[cat] || [];
-                        grouped[cat].push(t);
-                      });
-                      const categories = Object.keys(grouped).sort();
+                    {taggingMode === 'discovery' ? (
+                      (() => {
+                        const tags = videoTags[selectedVideo.id].tags || [];
+                        const grouped: Record<string, any[]> = {};
+                        tags.forEach((t: any) => {
+                          const cat = t.category_name || '视频元素';
+                          grouped[cat] = grouped[cat] || [];
+                          grouped[cat].push(t);
+                        });
+                        const categories = Object.keys(grouped).sort();
 
-                      return (
-                        <div className="space-y-3">
-                          {categories.map((cat) => (
-                            <div key={cat}>
-                              <div className="text-xs text-slate-500 mb-2">{cat}</div>
-                              <div className="flex flex-wrap gap-1">
-                                {grouped[cat].map((tag: any, index: number) => (
-                                  <span
-                                    key={`${cat}-${tag.tag_name}-${index}`}
-                                    className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
-                                  >
-                                    {tag.tag_name}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="space-y-2">
-                      {videoTags[selectedVideo.id].tags.map((tag: any, index: number) => {
-                        const isDetected = tag.confidence > 0;
                         return (
-                          <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`} className="flex items-center gap-2">
-                            <span className={isDetected ? "text-emerald-600" : "text-slate-300"}>
-                              {isDetected ? "✓" : "✗"}
-                            </span>
-                            <span className={`text-xs ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
-                              {tag.tag_name}
-                            </span>
-                            <span className="text-[10px] text-slate-400">({tag.category_name})</span>
+                          <div className="space-y-3">
+                            {categories.map((cat) => (
+                              <div key={cat}>
+                                <div className="text-xs text-slate-500 mb-2">{cat}</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {grouped[cat].map((tag: any, index: number) => (
+                                    <span
+                                      key={`${cat}-${tag.tag_name}-${index}`}
+                                      className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
+                                    >
+                                      {tag.tag_name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         );
-                      })}
+                      })()
+                    ) : (
+                      <div className="space-y-2">
+                        {videoTags[selectedVideo.id].tags?.map((tag: any, index: number) => {
+                          const isDetected = tag.confidence > 0;
+                          return (
+                            <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`} className="flex items-center gap-2">
+                              <span className={isDetected ? "text-emerald-600" : "text-slate-300"}>
+                                {isDetected ? "✓" : "✗"}
+                              </span>
+                              <span className={`text-xs ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                                {tag.tag_name}
+                              </span>
+                              <span className="text-[10px] text-slate-400">({tag.category_name})</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 叙事洞察 */}
+                  {(videoTags[selectedVideo.id]?.first5s_analysis || videoTags[selectedVideo.id]?.video_summary) && (
+                    <div className="space-y-4">
+                      {videoTags[selectedVideo.id]?.first5s_analysis && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-500 uppercase mb-2">前5秒拆解</h5>
+                          {renderFirstFiveSeconds(videoTags[selectedVideo.id].first5s_analysis)}
+                        </div>
+                      )}
+                      {videoTags[selectedVideo.id]?.video_summary && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-500 uppercase mb-2">视频结构总结</h5>
+                          {renderVideoSummary(videoTags[selectedVideo.id].video_summary)}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

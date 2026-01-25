@@ -14,6 +14,41 @@ class VideoTaggerService {
     this.concurrentTagging = 1;
   }
 
+  buildNarrativePrompt() {
+    return `
+你是服务于怡丽丝尔 (Elixir) 品牌的资深短视频分析专家，需要输出两个部分：
+1) 前5秒内容拆解：描述前5秒具体镜头、话术、悬念设计等，并给出亮点与优化建议。
+2) 全片结构总结：识别视频整体结构，基于“痛点引入 -> 产品引入 -> 信任背书 -> 行动呼吁 (CTA)”等典型漏斗阶段进行判断，可根据实际情况补充/删减阶段。
+
+分析要求：
+- 先完整观看全片再输出；
+- 每个结论要有画面或音频证据支撑，引用具体秒数；
+- 可用 bullet/short sentence 形式，便于 UI 展示；
+- 如果某个阶段缺失，也要明确指出缺失，并建议如何补齐。
+
+输出 JSON，结构如下：
+{
+  "first5s_analysis": {
+    "hook_strength": "强/中/弱",
+    "highlight": "",
+    "issue": "",
+    "timeline": [
+      {"second": 0, "description": ""}
+    ]
+  },
+  "video_summary": {
+    "structure": [
+      {"stage": "痛点引入", "present": true, "evidence": "", "timestamp": "0-5s"},
+      {"stage": "产品引入", ... }
+    ],
+    "overall_takeaway": ""
+  }
+}
+
+请一定返回合法 JSON，不要包含 Markdown。
+`;
+  }
+
   // 添加视频到打标队列
   async addToQueue(videoId, projectId, geminiApiKey) {
     console.log(`\n[Queue] 收到打标请求: videoId=${videoId}, projectId=${projectId}`);
@@ -98,6 +133,11 @@ class VideoTaggerService {
         'video/mp4',
         taxonomy
       );
+      const narrativeInsights = await this.analyzeNarratives(
+        gemini_api_key,
+        base64Video,
+        'video/mp4'
+      );
 
       const detectedCount = analysisResults.filter(r => r.detected).length;
       console.log(`[Tagging] Gemini 分析完成: 总计 ${analysisResults.length} 个标签，检测到 ${detectedCount} 个匹配`);
@@ -105,6 +145,7 @@ class VideoTaggerService {
       // 4. 保存结果 (80%)
       await VideoModel.updateVideoTaggingStatus(video_id, 'processing', 80);
       await this.saveTagResults(video_id, project_id, analysisResults, taxonomy);
+      await VideoModel.saveVideoNarratives(video_id, narrativeInsights);
       console.log(`[Tagging] 结果保存到数据库成功`);
 
       // 5. 完成 (100%)
@@ -209,6 +250,49 @@ You MUST return a valid JSON object with EXACTLY this structure:
     } catch (apiError) {
       console.error(`[Gemini] ❌ API 请求发生异常:`, apiError);
       throw apiError;
+    }
+  }
+
+  async analyzeNarratives(apiKey, base64Video, mimeType) {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = this.buildNarrativePrompt();
+
+    console.log('[Gemini] 发送叙事洞察分析请求 (Model: gemini-3-pro-preview)...');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: {
+        parts: [
+          { inlineData: { mimeType, data: base64Video } },
+          { text: prompt }
+        ]
+      },
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error('Gemini 叙事分析返回空响应');
+    }
+
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    }
+
+    try {
+      const json = JSON.parse(cleanText);
+      return {
+        first5s_analysis: json.first5s_analysis || null,
+        video_summary: json.video_summary || null
+      };
+    } catch (err) {
+      console.error('[Gemini] 叙事分析 JSON 解析失败:', err);
+      return { first5s_analysis: null, video_summary: null };
     }
   }
 

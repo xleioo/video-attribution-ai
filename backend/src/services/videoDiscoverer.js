@@ -1,4 +1,5 @@
 import { VideoModel } from '../models/videoModel.js';
+import { DEFAULT_MODEL } from '../config/aiConfig.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -181,10 +182,10 @@ class VideoDiscovererService {
 - viral_traits 是上述 3 项爆款潜质的子集；没有则返回空数组 []。
 `;
 
-    console.log(`[Gemini][Discovery] 发送分析请求 (Model: gemini-3-pro-preview)...`);
+    console.log(`[Gemini][Discovery] 发送分析请求 (Model: ${DEFAULT_MODEL})...`);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: DEFAULT_MODEL,
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64Video } },
@@ -250,10 +251,10 @@ class VideoDiscovererService {
     const ai = new GoogleGenAI({ apiKey });
     const prompt = this.buildNarrativePrompt();
 
-    console.log('[Gemini][Discovery] 发送叙事洞察分析请求 (Model: gemini-3-pro-preview)...');
+    console.log(`[Gemini][Discovery] 发送叙事洞察分析请求 (Model: ${DEFAULT_MODEL})...`);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: DEFAULT_MODEL,
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64Video } },

@@ -1,5 +1,6 @@
 import { VideoModel } from '../models/videoModel.js';
 import { TagModel } from '../models/tagModel.js';
+import { DEFAULT_MODEL } from '../config/aiConfig.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -194,11 +195,11 @@ You MUST return a valid JSON object with EXACTLY this structure:
 }
 `;
 
-    console.log(`[Gemini] 发送分析请求 (Model: gemini-3-pro-preview)...`);
+    console.log(`[Gemini] 发送分析请求 (Model: ${DEFAULT_MODEL})...`);
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: DEFAULT_MODEL,
         contents: {
           parts: [
             {
@@ -258,10 +259,10 @@ You MUST return a valid JSON object with EXACTLY this structure:
     const ai = new GoogleGenAI({ apiKey });
     const prompt = this.buildNarrativePrompt();
 
-    console.log('[Gemini] 发送叙事洞察分析请求 (Model: gemini-3-pro-preview)...');
+    console.log(`[Gemini] 发送叙事洞察分析请求 (Model: ${DEFAULT_MODEL})...`);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: DEFAULT_MODEL,
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64Video } },

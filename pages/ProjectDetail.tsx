@@ -6,12 +6,21 @@ import {
   CheckCircle,
   Loader,
   Clock,
-  Info,
   Video as VideoIcon,
   BarChart3,
   Brain,
   Table,
   Download,
+  Upload,
+  Tag,
+  FileText,
+  Sparkles,
+  Target,
+  TrendingUp,
+  HardDrive,
+  RefreshCw,
+  X,
+  Zap,
 } from 'lucide-react';
 import { videoApi, projectApi, apiConfigApi } from '../services/apiService';
 import type { Video, VideoStats, ProjectStatus, Project } from '../types';
@@ -221,45 +230,49 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
     if (!projectStatus) return null;
 
     const steps = [
-      { key: 'ingestion', label: '数据上传', icon: '📄' },
-      { key: 'video_download', label: '视频下载', icon: '⬇️' },
-      { key: 'ai_tagging', label: '视频打标', icon: '🏷️' },
-      { key: 'modeling', label: '归因分析', icon: '📊' },
-      { key: 'completed', label: '完成', icon: '✅' },
+      { key: 'ingestion', label: '数据上传', Icon: Upload },
+      { key: 'video_download', label: '视频下载', Icon: Download },
+      { key: 'ai_tagging', label: '视频打标', Icon: Tag },
+      { key: 'modeling', label: '归因分析', Icon: BarChart3 },
+      { key: 'completed', label: '完成', Icon: CheckCircle },
     ];
 
     const currentIndex = steps.findIndex((s) => s.key === projectStatus.current_step);
 
     return (
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         {steps.map((step, index) => (
           <React.Fragment key={step.key}>
             <div className="flex flex-col items-center flex-1">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-xl
-                  ${
-                    index < currentIndex
-                      ? 'bg-emerald-500 text-white'
-                      : index === currentIndex
-                      ? 'bg-indigo-500 text-white animate-pulse'
-                      : 'bg-slate-200 text-slate-400'
-                  }`}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                  index < currentIndex
+                    ? 'bg-blue-600 text-white'
+                    : index === currentIndex
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                    : 'bg-slate-100 text-slate-400'
+                }`}
               >
-                {step.icon}
+                <step.Icon size={20} />
               </div>
-              <p className="text-xs font-medium text-slate-700 mt-2">{step.label}</p>
+              <p className={`text-xs font-medium mt-2 transition-all ${
+                index <= currentIndex ? 'text-slate-700' : 'text-slate-400'
+              }`}>
+                {step.label}
+              </p>
               {index === currentIndex && projectStatus.estimated_time_remaining && (
-                <p className="text-xs text-slate-500 mt-1">
-                  预计 {projectStatus.estimated_time_remaining}
+                <p className="text-[10px] text-blue-600 mt-1 font-data font-medium">
+                  {projectStatus.estimated_time_remaining}
                 </p>
               )}
             </div>
             {index < steps.length - 1 && (
-              <div
-                className={`flex-1 h-1 ${
-                  index < currentIndex ? 'bg-emerald-500' : 'bg-slate-200'
-                }`}
-              />
+              <div className="flex-1 h-0.5 mx-3 rounded-full overflow-hidden bg-slate-200">
+                <div
+                  className={`h-full transition-all duration-500 bg-blue-600`}
+                  style={{ width: index < currentIndex ? '100%' : '0%' }}
+                />
+              </div>
             )}
           </React.Fragment>
         ))}
@@ -270,26 +283,32 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
   const renderFirstFiveSeconds = (analysis: any) => {
     if (!analysis) return null;
     return (
-      <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-2">
+      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3">
         {Array.isArray(analysis.timeline) && analysis.timeline.length > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {analysis.timeline.map((item: any, idx: number) => (
-              <div key={idx} className="flex items-start gap-2 text-[11px]">
-                <span className="text-slate-400">{item.second}s</span>
-                <span className="flex-1">{item.description}</span>
+              <div key={idx} className="flex items-start gap-3 text-sm">
+                <span className="font-medium font-data text-blue-600 bg-blue-50 px-2 py-0.5 rounded min-w-[36px] text-center text-xs">{item.second}s</span>
+                <span className="flex-1 text-slate-600 leading-relaxed">{item.description}</span>
               </div>
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-2 text-[11px]">
+        <div className="flex flex-wrap gap-2 pt-2">
           {analysis.hook_strength && (
-            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">钩子: {analysis.hook_strength}</span>
+            <span className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-medium text-xs border border-emerald-200">
+              钩子: {analysis.hook_strength}
+            </span>
           )}
           {analysis.highlight && (
-            <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">亮点: {analysis.highlight}</span>
+            <span className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-medium text-xs border border-blue-200">
+              亮点: {analysis.highlight}
+            </span>
           )}
           {analysis.issue && (
-            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-700">问题: {analysis.issue}</span>
+            <span className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 font-medium text-xs border border-amber-200">
+              问题: {analysis.issue}
+            </span>
           )}
         </div>
       </div>
@@ -299,19 +318,33 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
   const renderVideoSummary = (summary: any) => {
     if (!summary) return null;
     return (
-      <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-2">
+      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3">
         {Array.isArray(summary.structure) && summary.structure.length > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {summary.structure.map((stage: any, idx: number) => (
               <div
                 key={idx}
-                className={`flex items-start gap-2 ${stage.present ? 'text-slate-700' : 'text-slate-400 line-through'}`}
+                className={`flex items-start gap-3 p-3 rounded-lg transition-all ${
+                  stage.present
+                    ? 'bg-white border border-slate-200'
+                    : 'bg-slate-100 border border-slate-100 opacity-50'
+                }`}
               >
-                <span className="font-medium w-20">{stage.stage}</span>
+                <span className={`font-medium text-xs min-w-[72px] ${
+                  stage.present ? 'text-blue-600' : 'text-slate-400 line-through'
+                }`}>
+                  {stage.stage}
+                </span>
                 <div className="flex-1">
-                  <div>{stage.evidence || '未覆盖'}</div>
+                  <div className={`text-sm leading-relaxed ${
+                    stage.present ? 'text-slate-600' : 'text-slate-400'
+                  }`}>
+                    {stage.evidence || '未覆盖'}
+                  </div>
                   {stage.timestamp && (
-                    <div className="text-[10px] text-slate-400">{stage.timestamp}</div>
+                    <div className="text-[10px] text-blue-500 font-data mt-1 bg-blue-50 inline-block px-1.5 py-0.5 rounded">
+                      {stage.timestamp}
+                    </div>
                   )}
                 </div>
               </div>
@@ -319,7 +352,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
           </div>
         )}
         {summary.overall_takeaway && (
-          <div className="text-[11px] text-slate-500">总结：{summary.overall_takeaway}</div>
+          <div className="text-sm text-slate-600 bg-amber-50 p-3 rounded-lg border border-amber-200 leading-relaxed">
+            <strong className="text-amber-700">总结：</strong>{summary.overall_takeaway}
+          </div>
         )}
       </div>
     );
@@ -366,118 +401,133 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
   // 视频资产列表组件
   const renderVideoAssetsList = () => (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
-        <VideoIcon size={20} className="text-indigo-600" />
-        视频资产列表 (Video Assets)
-        <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-          Total: {videos.length}
-        </span>
-        {stats && (
-          <>
-            <span className="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              已下载: {stats.downloaded}
-            </span>
-            {stats.downloading > 0 && (
-              <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                下载中: {stats.downloading}
+    <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
+          <VideoIcon size={20} className="text-white" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-slate-800">视频资产列表</h3>
+          <p className="text-xs text-slate-500 font-data">Video Assets Collection</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-1 text-xs font-medium font-data text-slate-600 bg-slate-100 rounded-md">
+            共 <span className="text-blue-600 font-semibold">{videos.length}</span> 个
+          </span>
+          {stats && (
+            <>
+              <span className="px-2.5 py-1 text-xs font-medium font-data text-emerald-700 bg-emerald-50 rounded-md">
+                已下载 {stats.downloaded}
               </span>
-            )}
-            {stats.failed > 0 && (
-              <span className="text-xs font-normal text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-                失败: {stats.failed}
-              </span>
-            )}
-          </>
-        )}
-      </h3>
+              {stats.downloading > 0 && (
+                <span className="px-2.5 py-1 text-xs font-medium font-data text-blue-700 bg-blue-50 rounded-md">
+                  下载中 {stats.downloading}
+                </span>
+              )}
+              {stats.failed > 0 && (
+                <span className="px-2.5 py-1 text-xs font-medium font-data text-red-700 bg-red-50 rounded-md">
+                  失败 {stats.failed}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {videos.map((video) => {
           const metrics = videoMetrics[video.id] || {};
           const isReady = video.status === 'ready';
           const isDownloading = video.status === 'downloading';
           const isError = video.status === 'error';
-          
+
           return (
             <div
               key={video.id}
-              className={`border rounded-lg p-4 transition-all ${
+              className={`relative rounded-lg p-4 transition-all duration-200 overflow-hidden ${
                 isReady
-                  ? 'border-emerald-200 bg-emerald-50/30 hover:bg-white hover:shadow-md cursor-pointer group'
+                  ? 'bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
                   : isDownloading
-                  ? 'border-blue-200 bg-blue-50/30'
+                  ? 'bg-blue-50/50 border border-blue-200'
                   : isError
-                  ? 'border-rose-200 bg-rose-50/30'
-                  : 'border-slate-100 bg-slate-50/50'
+                  ? 'bg-red-50/50 border border-red-200'
+                  : 'bg-slate-50 border border-slate-200'
               }`}
               onClick={() => isReady && setSelectedVideo(video)}
             >
-              <div className="flex gap-4 mb-4">
+              <div className="flex gap-4 mb-3">
                 {/* 视频缩略图/状态图标 */}
-                <div className="w-24 h-24 rounded-lg shrink-0 overflow-hidden relative group/thumb">
+                <div className="w-24 h-24 rounded-lg shrink-0 overflow-hidden relative bg-slate-100">
                   {isReady && video.local_path ? (
                     <>
-                      {/* 使用 video 标签显示第一帧作为缩略图 */}
                       <video
                         src={`http://localhost:3001/storage/${video.local_path}#t=0.1`}
                         className="w-full h-full object-cover"
                         preload="metadata"
                       />
-                      {/* 播放图标覆盖层 */}
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
-                        <Play size={24} fill="white" className="text-white" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                          <Play size={16} fill="#3B82F6" className="text-blue-600 ml-0.5" />
+                        </div>
                       </div>
                     </>
                   ) : (
                     <div
                       className={`w-full h-full flex items-center justify-center ${
                         isDownloading
-                          ? 'bg-blue-100 text-blue-600'
+                          ? 'bg-blue-100'
                           : isError
-                          ? 'bg-rose-100 text-rose-600'
-                          : 'bg-slate-200 text-slate-400'
+                          ? 'bg-red-100'
+                          : 'bg-slate-100'
                       }`}
                     >
-                      {isDownloading && <Loader size={24} className="animate-spin" />}
-                      {isError && <AlertCircle size={24} />}
-                      {!isReady && !isDownloading && !isError && <Clock size={24} />}
+                      {isDownloading && <Loader size={24} className="animate-spin text-blue-600" />}
+                      {isError && <AlertCircle size={24} className="text-red-500" />}
+                      {!isReady && !isDownloading && !isError && <Clock size={24} className="text-slate-400" />}
                     </div>
                   )}
                 </div>
 
                 {/* 视频信息 */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-slate-800 text-sm line-clamp-2 leading-relaxed mb-1">
+                  <h4 className="font-medium text-slate-900 text-sm line-clamp-2 leading-snug mb-1">
                     {video.title || video.id}
                   </h4>
                   {video.title && (
-                    <div className="text-[10px] text-slate-400 mb-1 truncate">
+                    <div className="text-[10px] text-slate-400 mb-2 truncate font-data">
                       ID: {video.id}
                     </div>
                   )}
-                  <div className="text-[10px] text-slate-400 mb-2">
-                    {isReady && '可播放'}
-                    {isDownloading && `下载中 ${video.progress}%`}
-                    {isError && '下载失败'}
-                    {!isReady && !isDownloading && !isError && '等待下载'}
+                  <div className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded mb-2 ${
+                    isReady
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : isDownloading
+                      ? 'bg-blue-50 text-blue-600'
+                      : isError
+                      ? 'bg-red-50 text-red-600'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {isReady && 'Ready'}
+                    {isDownloading && `${video.progress}%`}
+                    {isError && 'Error'}
+                    {!isReady && !isDownloading && !isError && 'Pending'}
                   </div>
 
                   {/* 显示指标数据 */}
-                  <div className="flex flex-wrap gap-2 text-xs">
+                  <div className="flex flex-wrap gap-1.5">
                     {Object.entries(metrics).map(([key, value]) => (
-                      <div key={key} className="flex flex-col">
-                        <span className="text-slate-400 text-[10px] uppercase">{key}</span>
-                        <span className="font-medium text-slate-700">{value}</span>
+                      <div key={key} className="bg-slate-50 rounded px-2 py-1 border border-slate-100">
+                        <div className="text-[9px] text-slate-400 uppercase font-data">{key}</div>
+                        <div className="text-xs font-semibold text-slate-700">{value}</div>
                       </div>
                     ))}
                   </div>
 
                   {/* 下载进度条 */}
                   {isDownloading && (
-                    <div className="mt-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 transition-all duration-300"
+                        className="h-full bg-blue-600 rounded-full transition-all duration-300"
                         style={{ width: `${video.progress}%` }}
                       />
                     </div>
@@ -485,14 +535,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
                   {/* 错误信息 */}
                   {isError && video.error_message && (
-                    <p className="mt-2 text-[10px] text-rose-600 line-clamp-2">
+                    <p className="mt-2 text-xs text-red-600 bg-red-50 rounded p-2 line-clamp-2">
                       {video.error_message}
                     </p>
                   )}
 
                   {/* 文件信息 */}
                   {isReady && video.file_size && (
-                    <div className="mt-2 text-[10px] text-slate-400">
+                    <div className="mt-2 text-[10px] text-slate-400 font-data flex items-center gap-1">
+                      <HardDrive size={10} />
                       {(video.file_size / 1024 / 1024).toFixed(2)} MB
                     </div>
                   )}
@@ -501,43 +552,46 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
               {/* 打标按钮和标签显示 */}
               {isReady && (
-                <div className="mt-3 pt-3 border-t border-slate-200">
+                <div className="mt-3 pt-3 border-t border-slate-100">
                   {videoTags[video.id]?.ai_tagging_status === 'completed' ? (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-emerald-600">✓ 已打标</span>
+                        <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                          <CheckCircle size={12} />
+                          已打标
+                        </span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartTagging(video.id);
                           }}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-700"
+                          className="text-[10px] font-medium text-slate-500 hover:text-blue-600 flex items-center gap-1"
                         >
-                          重新打标
+                          <RefreshCw size={10} />
+                          重新分析
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {(() => {
                           const tags = videoTags[video.id]?.tags || [];
-                          // comparison：只显示命中标签；discovery：tags 本身就是“发现到”的标签
                           const detectedTags = taggingMode === 'comparison'
                             ? (tags.filter((t: any) => t.confidence > 0) || [])
                             : tags;
                           const displayTags = detectedTags.slice(0, 3);
                           const remainingCount = detectedTags.length - 3;
-                          
+
                           return (
                             <>
                               {displayTags.map((tag: any, index: number) => (
                                 <span
                                   key={tag.id || `${tag.tag_category_id || tag.category_name}-${tag.tag_name}-${index}`}
-                                  className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded"
+                                  className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded"
                                 >
                                   {tag.tag_name}
                                 </span>
                               ))}
                               {remainingCount > 0 && (
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[10px] text-slate-400 font-medium bg-slate-50 px-2 py-0.5 rounded">
                                   +{remainingCount}
                                 </span>
                               )}
@@ -547,35 +601,39 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                       </div>
                     </div>
                   ) : videoTags[video.id]?.ai_tagging_status === 'processing' ? (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-blue-600">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-medium text-blue-600">
                         <Loader className="w-3 h-3 animate-spin" />
-                        <span>AI打标中...</span>
+                        <span>AI 分析中</span>
                         {videoTags[video.id]?.ai_tagging_progress > 0 && (
-                          <span className="text-[10px]">
+                          <span className="text-[10px] font-data bg-blue-50 px-1.5 py-0.5 rounded ml-auto">
                             {videoTags[video.id].ai_tagging_progress}%
                           </span>
                         )}
                       </div>
                       {videoTags[video.id]?.ai_tagging_progress > 0 && (
-                        <div className="w-full bg-slate-200 rounded-full h-1">
+                        <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
                           <div
-                            className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                            className="h-full bg-blue-600 rounded-full transition-all duration-300"
                             style={{ width: `${videoTags[video.id].ai_tagging_progress}%` }}
                           />
                         </div>
                       )}
                     </div>
                   ) : videoTags[video.id]?.ai_tagging_status === 'error' ? (
-                    <div>
-                      <div className="text-xs text-rose-600 mb-1">打标失败</div>
+                    <div className="space-y-2">
+                      <div className="text-xs font-medium text-red-600 flex items-center gap-1">
+                        <AlertCircle size={12} />
+                        打标失败
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStartTagging(video.id);
                         }}
-                        className="text-xs text-indigo-600 hover:text-indigo-700"
+                        className="w-full py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center gap-1"
                       >
+                        <RefreshCw size={12} />
                         重试
                       </button>
                     </div>
@@ -585,9 +643,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                         e.stopPropagation();
                         handleStartTagging(video.id);
                       }}
-                      className="w-full py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors"
+                      className="w-full py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-1.5"
                     >
-                      🏷️ 视频打标
+                      <Tag size={14} />
+                      开始 AI 打标
                     </button>
                   )}
                 </div>
@@ -598,81 +657,86 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       </div>
 
       {videos.length === 0 && (
-        <div className="text-center py-12 text-slate-500">
-          <VideoIcon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p>暂无视频数据</p>
+        <div className="text-center py-12">
+          <VideoIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-sm text-slate-400">暂无视频数据</p>
         </div>
       )}
     </div>
   );
 
   return (
-    <div className="h-screen overflow-y-auto bg-slate-50 p-8 pb-20">
+    <div className="h-screen overflow-y-auto p-8 pb-20">
       {/* 头部 */}
       <header className="mb-6">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors mb-4"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors mb-4 text-sm"
         >
-          <ArrowLeft className="w-5 h-5" />
-          返回项目列表
+          <ArrowLeft className="w-4 h-4" />
+          <span>返回项目列表</span>
         </button>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
-                analysisCompleted 
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  analysisCompleted ? 'bg-emerald-500' : 'bg-blue-500 animate-pulse'
-                }`}></div>
-                {analysisCompleted ? '已完成' : '处理中'}
+
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${
+                  analysisCompleted
+                    ? 'bg-emerald-50 text-emerald-600'
+                    : 'bg-blue-50 text-blue-600'
+                }`}>
+                  {analysisCompleted ? <CheckCircle size={12} /> : <Zap size={12} />}
+                  {analysisCompleted ? '已完成' : '处理中'}
+                </div>
+                <span className="text-slate-400 text-xs font-data">
+                  ID: {projectId}
+                </span>
               </div>
-              <span className="text-slate-400 text-xs font-mono">PROJECT-ID: {projectId}</span>
+              <h1 className="text-xl font-semibold text-slate-900 mb-1">
+                {project?.name || `项目 #${projectId}`}
+              </h1>
+              {project?.description && (
+                <p className="text-slate-500 text-sm">{project.description}</p>
+              )}
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">{project?.name || `项目 #${projectId}`}</h1>
-            {project?.description && (
-              <p className="text-slate-600 text-sm mt-1">{project.description}</p>
-            )}
           </div>
         </div>
       </header>
 
       {/* 进度步骤条 */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
         {renderProgressStepper()}
         {projectStatus && projectStatus.current_step === 'video_download' && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
-              <span>视频下载进度</span>
-              <span>{projectStatus.progress_percentage}%</span>
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-slate-600">视频下载进度</span>
+              <span className="font-semibold text-slate-800 font-data">{projectStatus.progress_percentage}%</span>
             </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-500 transition-all duration-300"
+                className="h-full bg-blue-600 rounded-full transition-all duration-300"
                 style={{ width: `${projectStatus.progress_percentage}%` }}
               />
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-              <span>已下载: {stats?.downloaded || 0} / {stats?.total || 0}</span>
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 font-data">
+              <span>已下载: <strong className="text-slate-700">{stats?.downloaded || 0}</strong> / {stats?.total || 0}</span>
               {stats && stats.failed > 0 && (
-                <span className="text-rose-600">失败: {stats.failed}</span>
+                <span className="text-red-500">失败: {stats.failed}</span>
               )}
             </div>
           </div>
         )}
-        
-        {/* 数据下载按钮 - 只在所有视频完成打标后显示 */}
+
+        {/* 数据下载按钮 */}
         {allVideosTagged && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 pt-6 border-t border-slate-100 flex justify-center">
             <button
               onClick={handleDownloadData}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors shadow-md hover:shadow-lg"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
             >
-              <Download size={20} />
-              <span>下载项目数据 (CSV)</span>
+              <Download size={16} />
+              下载项目数据 (CSV)
             </button>
           </div>
         )}
@@ -685,15 +749,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
       {/* 指标选择 Tabs */}
       {metricKeys.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-1 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           {metricKeys.map((metricKey) => (
             <button
               key={metricKey}
               onClick={() => setActiveMetric(metricKey)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 activeMetric === metricKey
-                  ? 'bg-white text-emerald-700 border-emerald-500 shadow-sm'
-                  : 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-slate-600 hover:text-slate-800 border border-slate-200 hover:border-slate-300'
               }`}
             >
               {metricKey.toUpperCase()}
@@ -703,47 +767,65 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       )}
 
       {/* 分析报告区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
         {/* 特征权重分布区域（左侧大区域）*/}
-        <div className="lg:col-span-2 bg-slate-100 p-6 rounded-xl shadow-sm border border-slate-200 min-h-[600px] flex flex-col items-center justify-center">
-          <BarChart3 className="w-16 h-16 text-slate-300 mb-4" />
-          <h3 className="font-bold text-slate-400 mb-2">特征权重分布 (Feature Weights)</h3>
-          <p className="text-sm text-slate-400 text-center max-w-md">
-            {analysisReady 
-              ? '归因分析进行中，请稍候...' 
-              : '等待视频下载完成后，将自动开始AI分析'}
-          </p>
-          {!analysisReady && stats && (
-            <div className="mt-4 text-xs text-slate-500">
-              <div className="flex items-center gap-2">
-                <Loader className="w-4 h-4 animate-spin" />
-                <span>下载进度: {stats.downloaded} / {stats.total}</span>
-              </div>
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-8 min-h-[400px] flex flex-col items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-xl flex items-center justify-center">
+              <BarChart3 className="w-8 h-8 text-slate-400" />
             </div>
-          )}
+            <h3 className="text-lg font-semibold text-slate-700 mb-1">特征权重分布</h3>
+            <p className="text-xs text-slate-400 font-data mb-3">Feature Weights Distribution</p>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              {analysisReady
+                ? '归因分析进行中，请稍候...'
+                : '等待视频下载完成后，将自动开始AI分析'}
+            </p>
+            {!analysisReady && stats && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-lg">
+                <Loader className="w-4 h-4 animate-spin text-blue-600" />
+                <span className="font-data text-sm text-slate-600">
+                  下载进度: <strong className="text-blue-600">{stats.downloaded}</strong> / {stats.total}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 右侧区域 */}
-        <div className="space-y-6 flex flex-col h-[600px]">
+        <div className="space-y-5 flex flex-col">
           {/* AI 智能洞察 */}
-          <div className="bg-slate-100 p-6 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col items-center justify-center">
-            <Brain className="w-12 h-12 text-slate-300 mb-3" />
-            <h3 className="font-bold text-slate-400 mb-2 text-center">AI 智能洞察</h3>
-            <p className="text-xs text-slate-400 text-center">
-              分析完成后将显示智能推荐
-            </p>
+          <div className="bg-white rounded-xl border border-slate-200 p-6 flex-1 flex flex-col items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-3 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Brain className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-700 mb-1">AI 智能洞察</h3>
+              <p className="text-xs text-slate-400 font-data">Intelligent Insights</p>
+              <p className="text-sm text-slate-500 mt-2">
+                分析完成后将显示智能推荐
+              </p>
+            </div>
           </div>
 
           {/* 完整特征数据 */}
-          <div className="bg-slate-100 rounded-xl shadow-sm border border-slate-200 flex flex-col flex-1">
-            <div className="p-4 border-b border-slate-200 bg-slate-50/50 rounded-t-xl">
-              <h3 className="font-bold text-slate-400 text-sm flex items-center gap-2">
-                <Table className="w-4 h-4" />
-                完整特征数据 (All Features)
+          <div className="bg-white rounded-xl border border-slate-200 flex flex-col flex-1 overflow-hidden">
+            <div className="p-4 border-b border-slate-100">
+              <h3 className="font-medium text-slate-700 text-sm flex items-center gap-2">
+                <div className="w-7 h-7 bg-amber-100 rounded-md flex items-center justify-center">
+                  <Table className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="leading-tight">完整特征数据</div>
+                  <div className="text-[10px] text-slate-400 font-data font-normal">All Features</div>
+                </div>
               </h3>
             </div>
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-slate-400">等待分析结果...</p>
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center">
+                <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">等待分析结果...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -752,51 +834,65 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       {/* 视频播放模态框 */}
       {selectedVideo && (
         <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedVideo(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-slate-900 mb-2">
+            <div className="p-6 relative">
+              {/* 关闭按钮 */}
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute top-4 right-4 w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
+              >
+                <X size={16} className="text-slate-500" />
+              </button>
+              <h3 className="text-lg font-semibold text-slate-900 mb-1 pr-10">
                 {selectedVideo.title || selectedVideo.id}
               </h3>
               {selectedVideo.title && (
-                <p className="text-xs text-slate-500 mb-4">ID: {selectedVideo.id}</p>
+                <p className="text-xs text-slate-400 font-data mb-4">ID: {selectedVideo.id}</p>
               )}
-              <video
-                controls
-                className="w-full max-w-[300px] mx-auto rounded-lg"
-                src={`http://localhost:3001/storage/${selectedVideo.local_path}`}
-              >
-                您的浏览器不支持视频播放
-              </video>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600">
-                <div>
-                  <span className="text-slate-400 text-xs">文件大小:</span>{' '}
-                  <div className="font-medium text-slate-900">
+              <div className="mb-4">
+                <video
+                  controls
+                  className="w-full rounded-lg bg-black"
+                  src={`http://localhost:3001/storage/${selectedVideo.local_path}`}
+                >
+                  您的浏览器不支持视频播放
+                </video>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <div className="text-[10px] text-slate-400 font-data uppercase mb-0.5">文件大小</div>
+                  <div className="text-base font-semibold text-slate-700">
                     {(selectedVideo.file_size! / 1024 / 1024).toFixed(2)} MB
                   </div>
                 </div>
                 {selectedVideo.duration && (
-                  <div>
-                    <span className="text-slate-400 text-xs">时长:</span>{' '}
-                    <div className="font-medium text-slate-900">{selectedVideo.duration}秒</div>
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <div className="text-[10px] text-slate-400 font-data uppercase mb-0.5">时长</div>
+                    <div className="text-base font-semibold text-slate-700">{selectedVideo.duration}秒</div>
                   </div>
                 )}
               </div>
 
               {/* 显示该视频的指标 */}
               {videoMetrics[selectedVideo.id] && (
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-3">业务指标</h4>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="mb-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-6 h-6 bg-blue-100 rounded-md flex items-center justify-center">
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-700">业务指标</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     {Object.entries(videoMetrics[selectedVideo.id]).map(([key, value]) => (
-                      <div key={key} className="bg-slate-50 rounded-lg p-3">
-                        <div className="text-xs text-slate-500 uppercase mb-1">{key}</div>
-                        <div className="text-base font-bold text-slate-900">{value}</div>
+                      <div key={key} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                        <div className="text-[10px] text-slate-400 font-data uppercase mb-0.5">{key}</div>
+                        <div className="text-base font-semibold text-slate-700">{value}</div>
                       </div>
                     ))}
                   </div>
@@ -805,11 +901,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
               {/* 显示AI标签/主动挖掘标签 */}
               {videoTags[selectedVideo.id]?.ai_tagging_status === 'completed' && (
-                <div className="mt-4 pt-4 border-t border-slate-200 space-y-4">
+                <div className="pt-4 border-t border-slate-100 space-y-4">
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">
-                      {taggingMode === 'discovery' ? '主动挖掘：视频元素标签' : 'AI 内容标签分析'}
-                    </h4>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-6 h-6 bg-emerald-100 rounded-md flex items-center justify-center">
+                        <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-slate-700">
+                        {taggingMode === 'discovery' ? '视频元素标签' : 'AI 内容标签'}
+                      </h4>
+                    </div>
 
                     {taggingMode === 'discovery' ? (
                       (() => {
@@ -825,13 +926,13 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                         return (
                           <div className="space-y-3">
                             {categories.map((cat) => (
-                              <div key={cat}>
-                                <div className="text-xs text-slate-500 mb-2">{cat}</div>
-                                <div className="flex flex-wrap gap-1">
+                              <div key={cat} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                <div className="text-xs font-medium text-slate-500 mb-2">{cat}</div>
+                                <div className="flex flex-wrap gap-1.5">
                                   {grouped[cat].map((tag: any, index: number) => (
                                     <span
                                       key={`${cat}-${tag.tag_name}-${index}`}
-                                      className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded"
+                                      className="text-xs font-medium bg-white text-slate-600 px-2 py-1 rounded border border-slate-200"
                                     >
                                       {tag.tag_name}
                                     </span>
@@ -843,18 +944,27 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                         );
                       })()
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         {videoTags[selectedVideo.id].tags?.map((tag: any, index: number) => {
                           const isDetected = tag.confidence > 0;
                           return (
-                            <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`} className="flex items-center gap-2">
-                              <span className={isDetected ? "text-emerald-600" : "text-slate-300"}>
-                                {isDetected ? "✓" : "✗"}
-                              </span>
-                              <span className={`text-xs ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                            <div key={tag.id || `${tag.tag_category_id}-${tag.tag_name}-${index}`}
+                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                   isDetected
+                                     ? 'bg-emerald-50 border border-emerald-100'
+                                     : 'bg-slate-50 border border-slate-100'
+                                 }`}>
+                              {isDetected ? (
+                                <CheckCircle size={14} className="text-emerald-500" />
+                              ) : (
+                                <X size={14} className="text-slate-300" />
+                              )}
+                              <span className={`text-sm flex-1 ${isDetected ? "text-slate-700 font-medium" : "text-slate-400"}`}>
                                 {tag.tag_name}
                               </span>
-                              <span className="text-[10px] text-slate-400">({tag.category_name})</span>
+                              <span className="text-[10px] text-slate-400 font-data">
+                                {tag.category_name}
+                              </span>
                             </div>
                           );
                         })}
@@ -864,16 +974,26 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
                   {/* 叙事洞察 */}
                   {(videoTags[selectedVideo.id]?.first5s_analysis || videoTags[selectedVideo.id]?.video_summary) && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
                       {videoTags[selectedVideo.id]?.first5s_analysis && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-500 uppercase mb-2">前5秒拆解</h5>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
+                              <span className="text-[9px] text-blue-600 font-bold font-data">5s</span>
+                            </div>
+                            <h5 className="text-xs font-semibold text-slate-700">前5秒拆解</h5>
+                          </div>
                           {renderFirstFiveSeconds(videoTags[selectedVideo.id].first5s_analysis)}
                         </div>
                       )}
                       {videoTags[selectedVideo.id]?.video_summary && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-500 uppercase mb-2">视频结构总结</h5>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-5 h-5 bg-violet-100 rounded flex items-center justify-center">
+                              <FileText size={10} className="text-violet-600" />
+                            </div>
+                            <h5 className="text-xs font-semibold text-slate-700">视频结构总结</h5>
+                          </div>
                           {renderVideoSummary(videoTags[selectedVideo.id].video_summary)}
                         </div>
                       )}

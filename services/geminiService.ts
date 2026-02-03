@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { TagCategory, VideoAnalysisResult } from "../types";
-import { DEFAULT_MODEL } from "./aiConfig";
 
 export const analyzeVideoWithGemini = async (
   apiKey: string,
@@ -43,7 +42,7 @@ export const analyzeVideoWithGemini = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL, // Unified model
+      model: "gemini-3-pro-preview", // Unified model
       contents: {
         parts: [
           {

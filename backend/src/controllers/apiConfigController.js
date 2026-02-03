@@ -167,9 +167,8 @@ export const apiConfigController = {
       const ai = new GoogleGenAI({ apiKey: api_key });
 
       // 发送一个简单的测试请求
-      const { DEFAULT_MODEL } = await import('../config/aiConfig.js');
       const response = await ai.models.generateContent({
-        model: DEFAULT_MODEL,
+        model: "gemini-3-pro-preview",
         contents: {
           parts: [
             {

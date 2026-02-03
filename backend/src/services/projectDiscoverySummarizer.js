@@ -1,5 +1,4 @@
 import { VideoModel } from '../models/videoModel.js';
-import { DEFAULT_MODEL } from '../config/aiConfig.js';
 
 /**
  * 主动挖掘：项目级标签汇总
@@ -103,7 +102,7 @@ async function mergeSynonymsWithGemini(tags, apiKey, categoryName = '视频元�
   console.log(`[DiscoverySummary][Gemini] 📦 请求 payload 大小:`, JSON.stringify(requestPayload).length, 'bytes');
 
   const response = await ai.models.generateContent({
-    model: DEFAULT_MODEL,
+    model: 'gemini-3-pro-preview',
     contents: { parts: [{ text: prompt }, { text: JSON.stringify(requestPayload, null, 2) }] },
     config: { responseMimeType: 'application/json', temperature: 0.1 }
   });

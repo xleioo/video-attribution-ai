@@ -332,10 +332,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
         seconds += parseInt(minMatch[1]) * 60;
       }
 
-      // 匹配秒（如"7s"或直接是"7"）
-      const secMatch = timeStr.match(/(\d+)s?$/);
+      // 匹配秒（如"7s"或直接是数字"15"）
+      // 注意：需要排除已经被分钟匹配的情况
+      const secMatch = timeStr.match(/(\d+)s?\s*$/);
       if (secMatch) {
-        seconds += parseInt(secMatch[1]);
+        // 如果已经匹配了分钟，确保不会重复计算
+        const secPart = secMatch[1];
+        // 检查这个数字是否是分钟部分的一部分
+        if (!minMatch || !timeStr.match(new RegExp(minMatch[1] + 'm' + secPart))) {
+          seconds += parseInt(secPart);
+        }
       }
 
       return seconds;
@@ -350,10 +356,13 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       const start = timeToSeconds(startStr);
       const end = timeToSeconds(endStr);
 
+      // 确保 duration 不为负数
+      const duration = end === -1 ? 0 : Math.max(0, end - start);
+
       return {
         start,
-        end: end === -1 ? start : end, // 如果是End，暂时用start，后面会用视频总时长替换
-        duration: end === -1 ? 0 : end - start
+        end: end === -1 ? -1 : end, // 保持 -1 标记，让调用处处理
+        duration
       };
     }
 
@@ -366,7 +375,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       const endSec = parseInt(oldFormatMatch[4]);
       const start = startMin * 60 + startSec;
       const end = endMin * 60 + endSec;
-      return { start, end, duration: end - start };
+      // 确保 duration 不为负数
+      return { start, end, duration: Math.max(0, end - start) };
     }
 
     return { start: 0, end: 0, duration: 0 };
@@ -414,8 +424,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
             // 如果end=-1（表示"End"），用totalDuration替换
             if (end === -1) {
               end = totalDuration;
-              duration = end - start;
+              duration = Math.max(0, end - start);
             }
+            // 确保 duration 不为负数
+            duration = Math.max(0, duration);
 
             const widthPercent = (duration / totalDuration) * 100;
             const leftPercent = (start / totalDuration) * 100;
@@ -427,7 +439,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                 className={`absolute h-full ${config.bgColor} flex items-center justify-center transition-all hover:brightness-110`}
                 style={{
                   left: `${leftPercent}%`,
-                  width: `${widthPercent}%`,
+                  width: `${Math.max(widthPercent, 5)}%`, // 最小宽度5%以确保可见
                   minWidth: '40px'
                 }}
               >
@@ -445,8 +457,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
             // 如果end=-1（表示"End"），用totalDuration替换
             if (end === -1) {
               end = totalDuration;
-              duration = end - start;
+              duration = Math.max(0, end - start);
             }
+            // 确保 duration 不为负数
+            duration = Math.max(0, duration);
 
             return (
               <div key={idx} className="text-center flex-1">
@@ -541,6 +555,26 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
 
     return (
       <div className="space-y-3">
+        {/* 前5秒标签 */}
+        {Array.isArray(analysis.tags) && analysis.tags.length > 0 && (
+          <div className="bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-lg p-3 border border-violet-200">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Tag size={12} className="text-violet-600" />
+              <span className="text-[10px] text-violet-600 font-medium">开场元素标签</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {analysis.tags.map((tag: string, idx: number) => (
+                <span
+                  key={idx}
+                  className="text-xs font-medium bg-white text-violet-700 px-2.5 py-1 rounded-full border border-violet-200 shadow-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 时间线 */}
         {Array.isArray(analysis.timeline) && analysis.timeline.length > 0 && (
           <div className="space-y-2">

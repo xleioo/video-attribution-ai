@@ -196,11 +196,11 @@ You MUST return a valid JSON object with EXACTLY this structure:
 }
 `;
 
-    console.log(`[Gemini] 发送分析请求 (Model: gemini-3-pro-preview)...`);
+    console.log(`[Gemini] 发送分析请求 (Model: gemini-3.1-pro-preview)...`);
     
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: "gemini-3.1-pro-preview",
         contents: {
           parts: [
             {
@@ -260,10 +260,10 @@ You MUST return a valid JSON object with EXACTLY this structure:
     const ai = new GoogleGenAI({ apiKey });
     const prompt = this.buildNarrativePrompt();
 
-    console.log('[Gemini] 发送叙事洞察分析请求 (Model: gemini-3-pro-preview)...');
+    console.log('[Gemini] 发送叙事洞察分析请求 (Model: gemini-3.1-pro-preview)...');
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3.1-pro-preview',
       contents: {
         parts: [
           { inlineData: { mimeType, data: base64Video } },

@@ -168,7 +168,7 @@ export const apiConfigController = {
 
       // 发送一个简单的测试请求
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: "gemini-3.1-pro-preview",
         contents: {
           parts: [
             {

@@ -2,6 +2,18 @@ import { ProjectModel } from '../models/projectModel.js';
 import { VideoModel } from '../models/videoModel.js';
 import videoDownloaderService from '../services/videoDownloader.js';
 import { summarizeProjectDiscoveryTags } from '../services/projectDiscoverySummarizer.js';
+import { buildTaggingResultWorkbook } from '../services/excelExporter.js';
+
+// DB 中 JSON 字段可能返回 string 或已解析对象，统一兜底解析
+const parseJsonField = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    return null;
+  }
+};
 
 export const projectController = {
   // 获取所有项目
@@ -228,7 +240,7 @@ export const projectController = {
     }
   },
 
-  // 下载项目数据（CSV格式）
+  // 下载项目打标结果（Excel / xlsx 格式，多 Sheet）
   async downloadProjectData(req, res) {
     try {
       const { id } = req.params;
@@ -263,7 +275,9 @@ export const projectController = {
       const apiConfig = await ApiConfigModel.getActiveApiConfig();
       const taggingMode = apiConfig?.tagging_mode || 'comparison';
 
-      let allTags = []; // { columnName, categoryName, tagName, aliases? }
+      // 标签列定义（宽表用）+ 标签字典（导出说明用）
+      let tagColumns = []; // { columnName, categoryName, tagName, aliases? }
+      let tagDictionary = []; // [{ categoryName, tags: [{ tagName, aliases? }] }]
 
       if (taggingMode === 'discovery') {
         // 确保项目级汇总标签已生成（首次下载触发）
@@ -279,19 +293,27 @@ export const projectController = {
           projectTags = await VideoModel.getProjectDiscoveryTags(id);
         }
 
-        allTags = projectTags.map(t => ({
+        tagColumns = projectTags.map(t => ({
           categoryName: t.category_name,
           tagName: t.tag_name,
           aliases: t.aliases_json ? (typeof t.aliases_json === 'string' ? JSON.parse(t.aliases_json) : t.aliases_json) : [],
           columnName: `${t.category_name}：${t.tag_name}`
         }));
+
+        const dictMap = new Map();
+        tagColumns.forEach(c => {
+          if (!dictMap.has(c.categoryName)) dictMap.set(c.categoryName, []);
+          dictMap.get(c.categoryName).push({ tagName: c.tagName, aliases: c.aliases });
+        });
+        tagDictionary = [...dictMap.entries()].map(([categoryName, tags]) => ({ categoryName, tags }));
       } else {
         // comparison 模式：预设标签体系
         const { TagModel } = await import('../models/tagModel.js');
         const tagCategories = await TagModel.getAllTagCategoriesWithTags();
         tagCategories.forEach(cat => {
+          tagDictionary.push({ categoryName: cat.name, tags: cat.tags.map(tagName => ({ tagName })) });
           cat.tags.forEach(tagName => {
-            allTags.push({
+            tagColumns.push({
               categoryName: cat.name,
               tagName: tagName,
               columnName: `${cat.name}：${tagName}`
@@ -304,79 +326,97 @@ export const projectController = {
       const metricsColumns = project.column_mapping?.metrics || {};
       const metricNames = Object.keys(metricsColumns);
 
-      // 构建CSV表头
-      const headers = [
-        '视频标题',
-        '视频URL',
-        ...metricNames,
-        ...allTags.map(t => t.columnName)
-      ];
-
-      // 构建CSV数据行
-      const rows = [];
+      // 逐视频装配数据
+      const videoData = [];
       for (const video of videos) {
-        // 获取视频的指标数据
         const videoMetrics = await VideoModel.getVideoMetrics(video.id);
         const metricsMap = {};
-        videoMetrics.forEach(m => {
-          metricsMap[m.metric_name] = m.metric_value;
-        });
+        videoMetrics.forEach(m => { metricsMap[m.metric_name] = m.metric_value; });
 
-        // 获取视频的标签数据（按模式）
-        const tagsMap = {};
+        const oneHot = {};
+        const tagDetails = [];
+        let hitTagCount = 0;
+
         if (taggingMode === 'discovery') {
           const videoDiscTags = await VideoModel.getVideoDiscoveryTags(video.id);
-          // 用 category => Set(tag)
+          hitTagCount = videoDiscTags.length;
+
+          // 长表：命中的每个标签一行
+          videoDiscTags.forEach(t => {
+            tagDetails.push({
+              categoryName: t.category_name || '视频元素',
+              categoryId: '',
+              tagName: t.tag_name,
+              detected: true,
+              confidence: null
+            });
+          });
+
+          // 宽表：category => Set(tag)
           const catMap = new Map();
           for (const t of videoDiscTags) {
             const cat = t.category_name || '视频元素';
             if (!catMap.has(cat)) catMap.set(cat, new Set());
             catMap.get(cat).add(t.tag_name);
           }
-          // 对每一个项目级列，检查本视频是否命中（tag_name 或 aliases 命中即 1）
-          for (const col of allTags) {
+          for (const col of tagColumns) {
             const set = catMap.get(col.categoryName) || new Set();
             const aliases = Array.isArray(col.aliases) ? col.aliases : [];
             const hit = set.has(col.tagName) || aliases.some(a => set.has(a));
-            tagsMap[col.columnName] = hit ? 1 : 0;
+            oneHot[col.columnName] = hit ? 1 : 0;
           }
         } else {
           const videoTags = await VideoModel.getVideoTags(video.id);
           videoTags.forEach(t => {
-            const key = `${t.category_name}：${t.tag_name}`;
-            tagsMap[key] = t.confidence > 0 ? 1 : 0;
+            const detected = t.confidence > 0;
+            if (detected) hitTagCount += 1;
+            // 长表：预设 taxonomy 全量（含未命中）
+            tagDetails.push({
+              categoryName: t.category_name,
+              categoryId: t.tag_category_id,
+              tagName: t.tag_name,
+              detected,
+              confidence: t.confidence == null ? null : Number(t.confidence)
+            });
+            oneHot[`${t.category_name}：${t.tag_name}`] = detected ? 1 : 0;
           });
         }
 
-        // 构建行数据
-        const row = [
-          video.title || video.id,
-          video.video_url || '',
-          ...metricNames.map(name => metricsMap[name] || ''),
-          ...allTags.map(t => tagsMap[t.columnName] || 0)
-        ];
-        rows.push(row);
+        videoData.push({
+          video_id: video.id,
+          title: video.title || video.id,
+          video_url: video.video_url || '',
+          duration: video.duration,
+          file_size: video.file_size,
+          ai_tagging_status: video.ai_tagging_status,
+          ai_tagging_error: video.ai_tagging_error,
+          metricsMap,
+          oneHot,
+          tagDetails,
+          hitTagCount,
+          first5s: parseJsonField(video.first5s_analysis),
+          summary: parseJsonField(video.video_summary)
+        });
       }
 
-      // 生成CSV内容
-      const csvLines = [
-        headers.map(h => `"${h}"`).join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      ];
-      const csvContent = csvLines.join('\n');
+      // 生成 Excel
+      const buffer = await buildTaggingResultWorkbook({
+        project,
+        taggingMode,
+        metricNames,
+        tagColumns,
+        tagDictionary,
+        videos: videoData
+      });
 
-      // 设置响应头
       const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const fileName = `${dateStr}-${project.name}-${videos.length}.csv`;
-      
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      const fileName = `${dateStr}-${project.name}-打标结果.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
       res.setHeader('Cache-Control', 'no-cache');
-      
-      // 添加BOM以支持Excel正确显示中文
-      res.write('\ufeff');
-      res.end(csvContent, 'utf-8');
-      
+      res.end(buffer);
+
     } catch (error) {
       console.error('下载项目数据失败:', error);
       res.status(500).json({

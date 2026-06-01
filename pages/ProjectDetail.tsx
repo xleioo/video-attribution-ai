@@ -1080,7 +1080,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
             >
               <Download size={16} />
-              下载项目数据 (CSV)
+              下载打标结果 (Excel)
             </button>
           </div>
         )}

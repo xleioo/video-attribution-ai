@@ -47,7 +47,7 @@ async function request<T>(
 
 // 项目相关API
 export const projectApi = {
-  // 下载项目数据（CSV）
+  // 下载项目打标结果（Excel）
   async downloadProjectData(projectId: number): Promise<void> {
     const url = `${API_BASE_URL}/api/projects/${projectId}/download`;
     const response = await fetch(url);
@@ -59,7 +59,7 @@ export const projectApi = {
     
     // 获取文件名
     const contentDisposition = response.headers.get('Content-Disposition');
-    let fileName = `project-${projectId}-data.csv`;
+    let fileName = `project-${projectId}-打标结果.xlsx`;
     if (contentDisposition) {
       const fileNameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
       if (fileNameMatch) {
